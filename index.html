@@ -225,6 +225,44 @@
       return { label: "Qarzdor", shortLabel: "Qarzdor", bgClass: 'bg-rose-500/10 text-rose-300 border-rose-500/30', dotClass: 'bg-rose-400' };
     };
 
+    // Helper: Auto-expand numbers entered in 'thousands' (e.g. 500 -> 500000)
+    const autoExpandThousand = (val) => {
+      if (val === '' || val === null || val === undefined) return 0;
+      const clean = String(val).replace(/\s/g, '').replace(/,/g, '');
+      const num = Number(clean);
+      if (isNaN(num) || num <= 0) return 0;
+      // If user enters number < 10000 (e.g. 500, 750, 1200, 35) -> multiply by 1000:
+      if (num < 10000) {
+        return num * 1000;
+      }
+      return num;
+    };
+
+    // Standard Expense Categories
+    const EXPENSE_CATEGORIES = [
+      'Founder harajatlari',
+      'Oqituvchilar oyligi',
+      'Xodimlar oyligi',
+      'Reklama va Target',
+      'Markaz xarajatlari',
+      'Kommunal va Ijara',
+      'Jihozlar va texnika',
+      'Boshqa'
+    ];
+
+    // Default Seed Data: Staff (Ustozlar & Xodimlar)
+    const DEFAULT_STAFF = [
+      { id: 'STF-101', name: 'Elnur Turdiyev', phone: '+998 90 123 45 67', role: 'teacher', position: 'Frontend ReactJS Ustozi', percent: 45, fixedSalary: 0, joinedDate: '2026-01-10', status: 'active' },
+      { id: 'STF-102', name: 'Sardorbek Karimov', phone: '+998 97 888 77 66', role: 'teacher', position: 'Python Backend Ustozi', percent: 40, fixedSalary: 0, joinedDate: '2026-01-15', status: 'active' },
+      { id: 'STF-103', name: 'Temur Saidov', phone: '+998 93 456 78 90', role: 'teacher', position: 'IELTS & Ingliz tili Ustozi', percent: 50, fixedSalary: 0, joinedDate: '2026-02-01', status: 'active' },
+      { id: 'STF-104', name: "Nigora Yo'ldosheva", phone: '+998 94 333 22 11', role: 'teacher', position: 'Grafik Dizayn Ustozi', percent: 40, fixedSalary: 0, joinedDate: '2026-02-15', status: 'active' },
+      { id: 'STF-105', name: 'Jasur Umarov', phone: '+998 95 123 99 88', role: 'teacher', position: 'Foundation Ustozi', percent: 35, fixedSalary: 0, joinedDate: '2026-03-01', status: 'active' },
+      { id: 'STF-106', name: 'Zilola Rahimova', phone: '+998 91 666 55 44', role: 'teacher', position: 'Kids IT Ustozi', percent: 40, fixedSalary: 0, joinedDate: '2026-03-10', status: 'active' },
+      { id: 'STF-201', name: 'Malika Rahimova', phone: '+998 90 987 65 43', role: 'staff', position: 'Bosh Administrator', percent: 0, fixedSalary: 3500000, joinedDate: '2026-01-05', status: 'active' },
+      { id: 'STF-202', name: 'Sherzod Qodirov', phone: '+998 99 111 22 33', role: 'staff', position: 'SMM & Marketing Menejeri', percent: 0, fixedSalary: 3000000, joinedDate: '2026-02-01', status: 'active' },
+      { id: 'STF-203', name: 'Gulbahor opa', phone: '+998 90 555 12 34', role: 'staff', position: "Tozalik va Xo'jalik xodimi", percent: 0, fixedSalary: 2000000, joinedDate: '2026-01-01', status: 'active' }
+    ];
+
     // Default Seed Data: Groups
     const DEFAULT_GROUPS = [
       { id: 'GRP-101', name: 'Frontend ReactJS (A1)', category: 'Dasturlash', fee: 750000, teacher: 'Elnur Turdiyev', days: 'Dush-Chor-Jum (14:00)', room: '1-Xona' },
@@ -273,7 +311,8 @@
       { id: 'EXP-5004', category: 'Markaz xarajatlari', description: 'Ichimlik suvi (18.9L bakalashkalar)', amount: 150000, recipient: 'Hydrolife Water Ltd', date: '2026-08-10', month: 'Avgust 2026', type: 'Xojalik' },
       { id: 'EXP-5005', category: 'Markaz xarajatlari', description: "Konselariya va qog'ozlar (A4, markerlar)", amount: 350000, recipient: 'Kantselyariya Dunyosi', date: '2026-08-12', month: 'Avgust 2026', type: 'Xojalik' },
       { id: 'EXP-5006', category: 'Markaz xarajatlari', description: 'Gullar va interyer bezaklari', amount: 120000, recipient: 'Flora Flowers Studio', date: '2026-08-14', month: 'Avgust 2026', type: 'Interyer' },
-      { id: 'EXP-5007', category: 'Kommunal va Ijara', description: 'Bino ijarasi va elektr/optik internet', amount: 5000000, recipient: 'Bino Egasi (Ijara)', date: '2026-08-01', month: 'Avgust 2026', type: 'Fixed' }
+      { id: 'EXP-5007', category: 'Kommunal va Ijara', description: 'Bino ijarasi va elektr/optik internet', amount: 5000000, recipient: 'Bino Egasi (Ijara)', date: '2026-08-01', month: 'Avgust 2026', type: 'Fixed' },
+      { id: 'EXP-5008', category: 'Founder harajatlari', description: "Ta'sischi dividend va strategik rivojlantirish harajatlari", amount: 4000000, recipient: 'Laziz aka (Founder)', date: '2026-08-20', month: 'Avgust 2026', type: 'Boshqa' }
     ];
 
     // Excel Exporter
@@ -435,7 +474,22 @@ CREATE TABLE IF NOT EXISTS action_logs (
   details TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
+ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;
+
+-- 7. Xodimlar va O'qituvchilar jadvali
+CREATE TABLE IF NOT EXISTS staff (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  phone TEXT,
+  role TEXT DEFAULT 'teacher',
+  position TEXT,
+  percent NUMERIC DEFAULT 0,
+  fixed_salary NUMERIC DEFAULT 0,
+  joined_date DATE DEFAULT CURRENT_DATE,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
     // Main App Component
     
@@ -836,6 +890,25 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
         return saved ? JSON.parse(saved) : DEFAULT_EXPENSES;
       });
 
+      // Staff State (Ustozlar & Boshqa xodimlar)
+      const [staff, setStaff] = useState(() => {
+        const saved = localStorage.getItem('edufinance_staff_v1');
+        return saved ? JSON.parse(saved) : DEFAULT_STAFF;
+      });
+      const [staffFilter, setStaffFilter] = useState('all'); // 'all' | 'teachers' | 'staff'
+      const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+      const [staffForm, setStaffForm] = useState({
+        id: '',
+        name: '',
+        phone: '+998 ',
+        role: 'teacher', // 'teacher' (foizli) yoki 'staff' (qat'iy oylik)
+        position: 'Frontend ReactJS Ustozi',
+        percent: 40,
+        fixedSalary: 3500000,
+        status: 'active',
+        joinedDate: getTodayInputFormat()
+      });
+
       // Dynamic Months: Automatic generation on start & on month end
       const [months, setMonths] = useState(() => {
         const saved = localStorage.getItem('edufinance_m_v6');
@@ -938,6 +1011,10 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
       }, [groups]);
 
       useEffect(() => {
+        localStorage.setItem('edufinance_staff_v1', JSON.stringify(staff));
+      }, [staff]);
+
+      useEffect(() => {
         localStorage.setItem('edufinance_supabase_cfg', JSON.stringify(supabaseConfig));
       }, [supabaseConfig]);
 
@@ -998,6 +1075,18 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
           }));
           const { error: eErr } = await supabase.from('expenses').upsert(mappedExpenses);
           if (eErr) throw new Error("Harajatlarni yuklashda xato: " + eErr.message);
+
+          // 6. Sync Staff (Ustozlar & Xodimlar)
+          const mappedStaff = staff.map(st => ({
+            id: st.id, name: st.name, phone: st.phone, role: st.role,
+            position: st.position, percent: Number(st.percent || 0),
+            fixed_salary: Number(st.fixedSalary || 0), joined_date: st.joinedDate,
+            status: st.status || 'active'
+          }));
+          try {
+            const { error: stErr } = await supabase.from('staff').upsert(mappedStaff);
+            if (stErr) console.warn("Xodimlarni yuklashda ogohlantirish:", stErr.message);
+          } catch(ste) { console.warn("Staff sync notice:", ste); }
 
           setSupabaseConfig(prev => ({ ...prev, isConnected: true }));
           showToast("Barcha ma'lumotlar Supabase bulutiga muvaffaqiyatli saqlandi! 🚀");
@@ -1177,6 +1266,25 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
             }
           } catch(ae) { console.warn('Action logs pull notice:', ae); }
 
+          // 7. Pull Staff (Ustozlar & Xodimlar)
+          try {
+            const { data: stData, error: stErr } = await supabase.from('staff').select('*');
+            if (!stErr && stData && stData.length > 0) {
+              setStaff(stData.map(st => ({
+                id: st.id,
+                name: st.name,
+                phone: st.phone,
+                role: st.role,
+                position: st.position,
+                percent: Number(st.percent || 0),
+                fixedSalary: Number(st.fixed_salary || 0),
+                joinedDate: st.joined_date,
+                status: st.status || 'active'
+              })));
+              pullSuccess = true;
+            }
+          } catch(ste) { console.warn('Staff pull notice:', ste); }
+
           if (!isSilent) {
             if (pullSuccess) {
               showToast("Barcha ma'lumotlar Supabase dan muvaffaqiyatli yuklab olindi! ✅");
@@ -1306,6 +1414,30 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
         } catch (e) { console.error('Supabase month delete error:', e); }
       };
 
+      const syncStaffToSupabase = async (st) => {
+        if (!supabase || !supabaseConfig.autoSync) return;
+        try {
+          await supabase.from('staff').upsert({
+            id: st.id,
+            name: st.name,
+            phone: st.phone || '',
+            role: st.role || 'teacher',
+            position: st.position || '',
+            percent: Number(st.percent || 0),
+            fixed_salary: Number(st.fixedSalary || 0),
+            joined_date: st.joinedDate,
+            status: st.status || 'active'
+          });
+        } catch (e) { console.error('Supabase staff sync error:', e); }
+      };
+
+      const deleteStaffFromSupabase = async (id) => {
+        if (!supabase || !supabaseConfig.autoSync) return;
+        try {
+          await supabase.from('staff').delete().eq('id', id);
+        } catch (e) { console.error('Supabase staff delete error:', e); }
+      };
+
       // Automatic initial connection and sync with Supabase (Independent per-table loader)
       useEffect(() => {
         if (!supabase || !supabaseConfig.url || !supabaseConfig.key) return;
@@ -1397,6 +1529,27 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
                 foundCloudData = true;
               }
             } catch(e) { console.warn('Cloud action logs fetch notice:', e); }
+
+            // 7. Staff (Ustozlar & Xodimlar)
+            try {
+              const { data: stData, error: stErr } = await supabase.from('staff').select('*');
+              if (!stErr && stData && stData.length > 0) {
+                if (isMounted) {
+                  setStaff(stData.map(st => ({
+                    id: st.id,
+                    name: st.name,
+                    phone: st.phone,
+                    role: st.role,
+                    position: st.position,
+                    percent: Number(st.percent || 0),
+                    fixedSalary: Number(st.fixed_salary || 0),
+                    joinedDate: st.joined_date,
+                    status: st.status || 'active'
+                  })));
+                }
+                foundCloudData = true;
+              }
+            } catch(e) { console.warn('Cloud staff fetch notice:', e); }
 
             if (isMounted) {
               setSupabaseConfig(prev => ({ ...prev, isConnected: true }));
@@ -1570,13 +1723,19 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
         if (!studentForm.name.trim()) return;
 
         const isExisting = students.some(s => s.id === studentForm.id);
+        const cleanMonthlyFee = autoExpandThousand(studentForm.monthlyFee || 750000);
+        const updatedFormData = {
+          ...studentForm,
+          monthlyFee: cleanMonthlyFee
+        };
+
         if (isExisting) {
-          setStudents(prev => prev.map(s => s.id === studentForm.id ? { ...studentForm } : s));
-          logAdminAction('STUDENT_EDIT', "O'quvchi", `${studentForm.name} ma'lumotlari tahrirlandi (${studentForm.group}, oylik: ${formatMoney(studentForm.monthlyFee)})`);
+          setStudents(prev => prev.map(s => s.id === studentForm.id ? { ...updatedFormData } : s));
+          logAdminAction('STUDENT_EDIT', "O'quvchi", `${updatedFormData.name} ma'lumotlari tahrirlandi (${updatedFormData.group}, oylik: ${formatMoney(updatedFormData.monthlyFee)})`);
           showToast("O'quvchi ma'lumotlari yangilandi!");
         } else {
           const newStu = {
-            ...studentForm,
+            ...updatedFormData,
             id: studentForm.id || generateStudentId()
           };
           setStudents(prev => [newStu, ...prev]);
@@ -1585,7 +1744,7 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
           syncStudentToSupabase(newStu);
         }
         if (isExisting) {
-          syncStudentToSupabase(studentForm);
+          syncStudentToSupabase(updatedFormData);
         }
         setIsStudentModalOpen(false);
       };
@@ -1607,14 +1766,20 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
         e.preventDefault();
         if (!groupForm.name.trim()) return;
 
+        const cleanFee = autoExpandThousand(groupForm.fee || 750000);
+        const updatedGroupData = {
+          ...groupForm,
+          fee: cleanFee
+        };
+
         const isExisting = groups.some(g => g.id === groupForm.id);
         if (isExisting) {
-          setGroups(prev => prev.map(g => g.id === groupForm.id ? { ...groupForm } : g));
-          logAdminAction('GROUP_EDIT', 'Guruh', `${groupForm.name} guruhi tahrirlandi (oylik: ${formatMoney(groupForm.fee)})`);
+          setGroups(prev => prev.map(g => g.id === groupForm.id ? { ...updatedGroupData } : g));
+          logAdminAction('GROUP_EDIT', 'Guruh', `${updatedGroupData.name} guruhi tahrirlandi (oylik: ${formatMoney(updatedGroupData.fee)})`);
           showToast("Guruh ma'lumotlari yangilandi!");
         } else {
           const newGrp = {
-            ...groupForm,
+            ...updatedGroupData,
             id: groupForm.id || `GRP-${Math.floor(100 + Math.random() * 900)}`
           };
           setGroups(prev => [...prev, newGrp]);
@@ -1705,8 +1870,12 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
         if (!formData.studentName.trim()) return;
 
         let updated = [...payments];
-        const lumpSum = formData.is3MonthPayment ? (formData.bittaToliqSumma || (Number(formData.click || 0) + Number(formData.naqd || 0))) : 0;
-        const monthlyFee = Number(formData.oylikTolov || 750000);
+        const monthlyFee = autoExpandThousand(formData.oylikTolov || 750000);
+        const inputNaqd = autoExpandThousand(formData.naqd || 0);
+        const inputClick = autoExpandThousand(formData.click || 0);
+        const inputLump = autoExpandThousand(formData.bittaToliqSumma || 0);
+
+        const lumpSum = formData.is3MonthPayment ? (inputLump || (inputClick + inputNaqd)) : 0;
         const month1Depozit = formData.is3MonthPayment ? Math.max(0, lumpSum - monthlyFee) : 0;
 
         // Auto-register student into Students Database if not exists
@@ -1753,9 +1922,9 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
           const oldOylik = Number(ex.oylikTolov || 0);
           const oldTotal = oldNaqd + oldClick + Number(ex.naqd2 || 0) + Number(ex.click2 || 0);
 
-          let newNaqd = Number(formData.naqd || 0);
-          let newClick = Number(formData.click || 0);
-          let newOylik = Number(formData.oylikTolov || 0);
+          let newNaqd = inputNaqd;
+          let newClick = inputClick;
+          let newOylik = monthlyFee;
 
           // RESTRICTION: Non-super-admins cannot alter existing payment amounts!
           if (!isSuperAdmin) {
@@ -1821,8 +1990,9 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
             studentId: currentStudentId,
             operator: currentUser ? currentUser.fullName : 'Admin',
             history: [],
-            naqd: Number(formData.naqd || 0),
-            click: Number(formData.click || 0),
+            naqd: inputNaqd,
+            click: inputClick,
+            oylikTolov: monthlyFee,
             bittaToliqSumma: lumpSum, 
             depozitBalansi: month1Depozit,
             naqd2: 0, click2: 0, paymentDate2: '', note2: '',
@@ -1863,8 +2033,8 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
               phoneStudent: formData.phoneStudent,
               phoneParent: formData.phoneParent,
               oylikTolov: monthlyFee,
-              naqd: formData.naqd > 0 ? monthlyFee : 0,
-              click: formData.click > 0 ? monthlyFee : 0,
+              naqd: inputNaqd > 0 ? monthlyFee : 0,
+              click: inputClick > 0 ? monthlyFee : 0,
               group: formData.group,
               paymentDate: formData.paymentDate,
               month: targetM,
@@ -1885,6 +2055,7 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
         }
 
         setPayments(updated);
+        syncPaymentsBatchToSupabase(updated);
         setIsModalOpen(false);
         showToast("To'lov muvaffaqiyatli saqlandi!");
       };
@@ -1893,12 +2064,14 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
       const handleSaveExpense = (e) => {
         e.preventDefault();
         if (!expenseForm.description.trim() || !expenseForm.amount) return;
+        const cleanAmount = autoExpandThousand(expenseForm.amount);
         const newExp = {
           ...expenseForm,
-          amount: Number(expenseForm.amount),
+          amount: cleanAmount,
           id: `EXP-${5000 + expenses.length + 1}`
         };
         setExpenses(prev => [newExp, ...prev]);
+        syncExpenseToSupabase(newExp);
         logAdminAction('EXPENSE_ADD', 'Harajat', `${newExp.description} — ${formatMoney(newExp.amount)} so'm (${newExp.category}, ${newExp.month})`);
         setIsExpenseModalOpen(false);
         setExpenseForm({
@@ -1914,11 +2087,86 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
         const target = expenses.find(e => e.id === id);
         if (window.confirm("Bu harajatni o'chirishni tasdiqlaysizmi?")) {
           setExpenses(prev => prev.filter(e => e.id !== id));
+          deleteExpenseFromSupabase(id);
           if (target) {
             logAdminAction('EXPENSE_DELETE', 'Harajat', `${target.description} — ${formatMoney(target.amount)} so'm harajati o'chirildi`);
           }
           showToast("Harajat o'chirildi");
         }
+      };
+
+      // Save Staff (Ustoz yoki Xodim)
+      const handleSaveStaff = (e) => {
+        if (e) e.preventDefault();
+        if (!staffForm.name.trim()) return;
+
+        const isExisting = staff.some(s => s.id === staffForm.id);
+        const cleanPercent = Number(staffForm.percent || 0);
+        const cleanSalary = autoExpandThousand(staffForm.fixedSalary || 0);
+
+        let savedStaff;
+        if (isExisting) {
+          savedStaff = {
+            ...staffForm,
+            percent: cleanPercent,
+            fixedSalary: cleanSalary
+          };
+          setStaff(prev => prev.map(s => s.id === staffForm.id ? savedStaff : s));
+          logAdminAction('STAFF_EDIT', 'Xodim', `${savedStaff.name} ma'lumotlari tahrirlandi (${savedStaff.role === 'teacher' ? savedStaff.percent + '% foiz' : formatMoney(savedStaff.fixedSalary) + ' oylik'})`);
+          showToast("Xodim ma'lumotlari muvaffaqiyatli yangilandi!");
+        } else {
+          savedStaff = {
+            ...staffForm,
+            id: 'STF-' + Math.floor(100 + Math.random() * 900),
+            percent: cleanPercent,
+            fixedSalary: cleanSalary,
+            joinedDate: staffForm.joinedDate || getTodayInputFormat()
+          };
+          setStaff(prev => [...prev, savedStaff]);
+          logAdminAction('STAFF_ADD', 'Xodim', `Yangi ${savedStaff.role === 'teacher' ? 'ustoz' : 'xodim'} qo'shildi: ${savedStaff.name} (${savedStaff.position})`);
+          showToast(`Yangi xodim saqlandi: ${savedStaff.name}`);
+        }
+        syncStaffToSupabase(savedStaff);
+        setIsStaffModalOpen(false);
+      };
+
+      // Delete Staff
+      const handleDeleteStaff = (id) => {
+        const target = staff.find(s => s.id === id);
+        if (window.confirm(`Haqiqatan ham "${target ? target.name : id}" xodimini o'chirmoqchimisiz?`)) {
+          setStaff(prev => prev.filter(s => s.id !== id));
+          deleteStaffFromSupabase(id);
+          if (target) {
+            logAdminAction('STAFF_DELETE', 'Xodim', `${target.name} (${target.position}) xodimlar bazasidan o'chirildi`);
+          }
+          showToast("Xodim o'chirildi");
+        }
+      };
+
+      // 1-Click Pay Staff Salary -> writes directly into expenses!
+      const handlePayStaffSalary = (person, amount, targetMonth) => {
+        if (!amount || amount <= 0) {
+          alert("To'lanishi kerak bo'lgan summa 0 bo'lgani sababli to'lov amalga oshirilmadi.");
+          return;
+        }
+        if (!window.confirm(`${person.name} ga ${targetMonth} oyi uchun ${formatMoney(amount)} oylik to'lovini markaz harajatlariga qo'shmoqchimisiz?`)) {
+          return;
+        }
+        const catName = person.role === 'teacher' ? 'Oqituvchilar oyligi' : 'Xodimlar oyligi';
+        const newExp = {
+          id: `EXP-${5000 + expenses.length + 1}`,
+          category: catName,
+          description: `${person.name} (${person.position || (person.role === 'teacher' ? 'Ustoz' : 'Xodim')}) - ${targetMonth} oyligi`,
+          amount: Math.round(amount),
+          recipient: person.name,
+          date: getTodayInputFormat(),
+          month: targetMonth,
+          type: 'Kadrlar'
+        };
+        setExpenses(prev => [newExp, ...prev]);
+        syncExpenseToSupabase(newExp);
+        logAdminAction('PAYROLL_PAY', 'Oylik to\'lovi', `${person.name} ga ${targetMonth} oyi uchun ${formatMoney(amount)} oylik to'landi (${catName})`);
+        showToast(`${person.name} uchun ${formatMoney(amount)} oylik to'landi va harajatga yozildi! 💵`);
       };
 
       // Filtered Payments
@@ -1998,6 +2246,84 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
           return true;
         });
       }, [students, studentSearchTerm, studentFilterGroup]);
+
+      // ==========================================
+      // PAYROLL & STAFF CALCULATIONS
+      // ==========================================
+      const activePayrollMonth = selectedMonth !== 'all' ? selectedMonth : currentCalMonth;
+
+      const staffPayrollSummary = useMemo(() => {
+        const monthPayments = payments.filter(p => p.month === activePayrollMonth);
+
+        return staff.map(member => {
+          if (member.role === 'teacher') {
+            // Teacher: assigned groups
+            const teacherGroups = groups.filter(g => g.teacher && g.teacher.trim().toLowerCase() === member.name.trim().toLowerCase());
+            const groupNames = teacherGroups.map(g => g.name);
+
+            // Revenue from teacher's groups
+            const groupRevenue = monthPayments
+              .filter(p => groupNames.includes(p.group))
+              .reduce((acc, p) => acc + getTotalPaid(p), 0);
+
+            // Percentage salary: groupRevenue * percent / 100
+            const calculatedSalary = Math.round(groupRevenue * (Number(member.percent || 0) / 100));
+
+            // Checked against expenses for targetMonth
+            const paidInExpenses = expenses
+              .filter(e => e.month === activePayrollMonth && (e.recipient === member.name || (e.description && e.description.toLowerCase().includes(member.name.toLowerCase()))))
+              .reduce((acc, e) => acc + Number(e.amount || 0), 0);
+
+            return {
+              ...member,
+              teacherGroups,
+              groupsCount: teacherGroups.length,
+              groupNames,
+              groupRevenue,
+              calculatedSalary,
+              paidInExpenses,
+              balanceToPay: Math.max(0, calculatedSalary - paidInExpenses)
+            };
+          } else {
+            // Other staff: fixed static salary
+            const fixedSalary = Number(member.fixedSalary || 0);
+            const paidInExpenses = expenses
+              .filter(e => e.month === activePayrollMonth && (e.recipient === member.name || (e.description && e.description.toLowerCase().includes(member.name.toLowerCase()))))
+              .reduce((acc, e) => acc + Number(e.amount || 0), 0);
+
+            return {
+              ...member,
+              teacherGroups: [],
+              groupsCount: 0,
+              groupNames: [],
+              groupRevenue: 0,
+              calculatedSalary: fixedSalary,
+              paidInExpenses,
+              balanceToPay: Math.max(0, fixedSalary - paidInExpenses)
+            };
+          }
+        });
+      }, [staff, groups, payments, expenses, activePayrollMonth]);
+
+      const totalCalculatedPayroll = useMemo(() => {
+        return staffPayrollSummary.reduce((acc, s) => acc + (s.calculatedSalary || 0), 0);
+      }, [staffPayrollSummary]);
+
+      const totalPaidPayroll = useMemo(() => {
+        return staffPayrollSummary.reduce((acc, s) => acc + (s.paidInExpenses || 0), 0);
+      }, [staffPayrollSummary]);
+
+      const totalRemainingPayroll = useMemo(() => {
+        return staffPayrollSummary.reduce((acc, s) => acc + (s.balanceToPay || 0), 0);
+      }, [staffPayrollSummary]);
+
+      const filteredStaffList = useMemo(() => {
+        return staffPayrollSummary.filter(s => {
+          if (staffFilter === 'teachers' && s.role !== 'teacher') return false;
+          if (staffFilter === 'staff' && s.role !== 'staff') return false;
+          return true;
+        });
+      }, [staffPayrollSummary, staffFilter]);
 
       // If user is not logged in, show full-screen Login Screen
       if (!currentUser) {
@@ -2087,6 +2413,28 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
                 title="Yangi o'quvchi qo'shish"
               >
                 <span>👥</span> + O'quvchi
+              </button>
+
+              {/* Quick Action: Add Staff / Teacher */}
+              <button
+                onClick={() => {
+                  setStaffForm({
+                    id: '',
+                    name: '',
+                    phone: '+998 ',
+                    role: 'teacher',
+                    position: 'Ustoz',
+                    percent: 40,
+                    fixedSalary: 3500000,
+                    status: 'active',
+                    joinedDate: getTodayInputFormat()
+                  });
+                  setIsStaffModalOpen(true);
+                }}
+                className="px-3.5 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:border-amber-500/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                title="Yangi ustoz yoki xodim qo'shish"
+              >
+                <span>👔</span> + Xodim
               </button>
 
               {/* Excel Export */}
@@ -2219,6 +2567,22 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
                   </div>
                   <span className={`text-[10px] font-mono tabular-nums px-2 py-0.5 rounded-full ${activeTab === 'groups' ? 'bg-black/20 text-white font-black' : 'bg-white/[0.08] text-slate-400'}`}>
                     {groups.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('staff')}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                    activeTab === 'staff'
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black shadow-lg shadow-amber-500/25'
+                      : 'text-slate-300 hover:text-white hover:bg-white/[0.05]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm">👔</span> Xodimlar & Oylik
+                  </div>
+                  <span className={`text-[10px] font-mono tabular-nums px-2 py-0.5 rounded-full ${activeTab === 'staff' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-white/[0.08] text-slate-400'}`}>
+                    {staff.length}
                   </span>
                 </button>
 
@@ -3133,6 +3497,369 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
               </div>
             )}
 
+            {/* ===== TAB: XODIMLAR VA OYLIKLAR (STAFF & PAYROLL) ===== */}
+            {activeTab === 'staff' && (
+              <div className="space-y-6">
+                {/* Header Banner */}
+                <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-amber-950/40 border border-amber-500/30 flex flex-wrap items-center justify-between gap-4 shadow-xl backdrop-blur-xl">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-2xl shadow-lg shadow-amber-500/25 text-slate-950 font-black">
+                      👔
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <h2 className="text-base font-extrabold text-white">
+                          Xodimlar va Oyliklar (Payroll) Boshqaruvi
+                        </h2>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold font-mono tabular-nums">
+                          {activePayrollMonth} oyi hisobi
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Ustozlar oyligi ularning guruhlaridan tushgan tushum va foiz (%) bo'yicha hisoblanadi. Boshqa xodimlarga qat'iy maosh to'lanadi.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      onClick={() => {
+                        setStaffForm({
+                          id: '',
+                          name: '',
+                          phone: '+998 ',
+                          role: 'teacher',
+                          position: 'Ustoz',
+                          percent: 40,
+                          fixedSalary: 3500000,
+                          status: 'active',
+                          joinedDate: getTodayInputFormat()
+                        });
+                        setIsStaffModalOpen(true);
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>+</span> Yangi Xodim / Ustoz Qo'shish
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 Modern KPI Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  {/* Card 1: Teachers Payroll */}
+                  <div className="p-4 rounded-2xl bg-slate-900/70 border border-amber-500/30 shadow-lg relative overflow-hidden backdrop-blur-xl">
+                    <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
+                      <span className="flex items-center gap-1.5 text-amber-300">
+                        <span>🎓</span> Ustozlar Oylik Fondi
+                      </span>
+                      <span className="font-mono text-[10px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        {staffPayrollSummary.filter(s => s.role === 'teacher').length} ta ustoz
+                      </span>
+                    </div>
+                    <div className="text-xl font-black text-amber-400 mt-2 font-mono tabular-nums">
+                      {formatMoney(staffPayrollSummary.filter(s => s.role === 'teacher').reduce((a, s) => a + s.calculatedSalary, 0))}
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">
+                      Guruhlar tushumidan hisoblangan foizli maoshlar
+                    </div>
+                  </div>
+
+                  {/* Card 2: Staff Fixed Payroll */}
+                  <div className="p-4 rounded-2xl bg-slate-900/70 border border-indigo-500/30 shadow-lg relative overflow-hidden backdrop-blur-xl">
+                    <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
+                      <span className="flex items-center gap-1.5 text-indigo-300">
+                        <span>💼</span> Qat'iy Oylik Fondi
+                      </span>
+                      <span className="font-mono text-[10px] bg-indigo-500/15 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                        {staffPayrollSummary.filter(s => s.role === 'staff').length} ta xodim
+                      </span>
+                    </div>
+                    <div className="text-xl font-black text-indigo-300 mt-2 font-mono tabular-nums">
+                      {formatMoney(staffPayrollSummary.filter(s => s.role === 'staff').reduce((a, s) => a + s.calculatedSalary, 0))}
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">
+                      Admin, menejer va xodimlar belgilangan maoshi
+                    </div>
+                  </div>
+
+                  {/* Card 3: Total Payroll */}
+                  <div className="p-4 rounded-2xl bg-slate-900/70 border border-emerald-500/30 shadow-lg relative overflow-hidden backdrop-blur-xl">
+                    <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
+                      <span className="flex items-center gap-1.5 text-emerald-300">
+                        <span>💰</span> Jami Hisoblangan Ish Haqi
+                      </span>
+                      <span className="font-mono text-[10px] bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        {activePayrollMonth}
+                      </span>
+                    </div>
+                    <div className="text-xl font-black text-emerald-400 mt-2 font-mono tabular-nums">
+                      {formatMoney(totalCalculatedPayroll)}
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">
+                      Ushbu oy bo'yicha markazning umumiy ish haqi yuki
+                    </div>
+                  </div>
+
+                  {/* Card 4: Paid vs Remaining */}
+                  <div className="p-4 rounded-2xl bg-slate-900/70 border border-white/[0.08] shadow-lg relative overflow-hidden backdrop-blur-xl">
+                    <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
+                      <span className="flex items-center gap-1.5 text-slate-200">
+                        <span>💳</span> To'langan / Qoldiq
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-2 mt-2">
+                      <span className="text-lg font-black text-cyan-400 font-mono tabular-nums">
+                        {formatMoney(totalPaidPayroll)}
+                      </span>
+                      <span className="text-slate-500 text-xs">/</span>
+                      <span className="text-xs font-bold text-rose-400 font-mono tabular-nums">
+                        {formatMoney(totalRemainingPayroll)}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                      <span className="text-cyan-400">● To'langan</span>
+                      <span className="text-rose-400">● Qolgan qarz</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter and Table Container */}
+                <div className="rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] overflow-hidden shadow-2xl space-y-0">
+                  <div className="flex flex-wrap items-center justify-between px-5 py-3.5 border-b border-white/[0.08] bg-slate-950/70 gap-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setStaffFilter('all')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          staffFilter === 'all'
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                            : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 border border-white/[0.06]'
+                        }`}
+                      >
+                        Barcha Xodimlar ({staff.length})
+                      </button>
+                      <button
+                        onClick={() => setStaffFilter('teachers')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          staffFilter === 'teachers'
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                            : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 border border-white/[0.06]'
+                        }`}
+                      >
+                        🎓 Ustozlar ({staff.filter(s => s.role === 'teacher').length})
+                      </button>
+                      <button
+                        onClick={() => setStaffFilter('staff')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          staffFilter === 'staff'
+                            ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm'
+                            : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 border border-white/[0.06]'
+                        }`}
+                      >
+                        💼 Boshqa Xodimlar ({staff.filter(s => s.role === 'staff').length})
+                      </button>
+                    </div>
+
+                    <div className="text-xs text-slate-400 flex items-center gap-2">
+                      <span>Hisob oyi:</span>
+                      <span className="font-bold text-amber-400 font-mono bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
+                        {activePayrollMonth}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-950/90 text-slate-400 uppercase text-[10px] font-extrabold tracking-wider border-b border-white/[0.08]">
+                          <th className="p-3.5 pl-5 min-w-[85px] whitespace-nowrap">ID</th>
+                          <th className="p-3.5 min-w-[200px] whitespace-nowrap text-white">Xodim / Ustoz</th>
+                          <th className="p-3.5 min-w-[180px] whitespace-nowrap">Lavozim & Stavka</th>
+                          <th className="p-3.5 min-w-[220px] whitespace-nowrap">Guruhlar & Tushum</th>
+                          <th className="p-3.5 min-w-[150px] whitespace-nowrap text-amber-300">Hisoblangan Oylik</th>
+                          <th className="p-3.5 min-w-[130px] whitespace-nowrap text-cyan-300">To'langan</th>
+                          <th className="p-3.5 min-w-[130px] whitespace-nowrap text-rose-300">Qoldiq</th>
+                          <th className="p-3.5 min-w-[160px] whitespace-nowrap text-center">Amallar</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {filteredStaffList.length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="p-12 text-center text-slate-500 text-xs">
+                              Xodimlar ro'yxati bo'sh. "+ Yangi Xodim / Ustoz Qo'shish" tugmasini bosing.
+                            </td>
+                          </tr>
+                        )}
+                        {filteredStaffList.map((st) => {
+                          const isTeacher = st.role === 'teacher';
+                          const isFullyPaid = st.calculatedSalary > 0 && st.balanceToPay === 0;
+
+                          return (
+                            <tr key={st.id} className="hover:bg-white/[0.03] transition-colors">
+                              <td className="p-3.5 pl-5 font-mono text-slate-400 whitespace-nowrap text-[11px]">
+                                {st.id}
+                              </td>
+
+                              <td className="p-3.5 whitespace-nowrap">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-md border ${
+                                    isTeacher
+                                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                      : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                                  }`}>
+                                    {isTeacher ? '🎓' : '💼'}
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-white text-xs flex items-center gap-1.5">
+                                      <span>{st.name}</span>
+                                      {st.status !== 'active' && (
+                                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">
+                                          {st.status}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                      {st.phone || 'Telefon yo\'q'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="p-3.5 whitespace-nowrap">
+                                <div>
+                                  <span className="font-medium text-slate-200">{st.position}</span>
+                                  <div className="mt-1">
+                                    {isTeacher ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                        <span>📊</span> {st.percent}% foiz stavka
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-mono">
+                                        <span>💰</span> Qat'iy: {formatMoney(st.fixedSalary)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="p-3.5 whitespace-nowrap">
+                                {isTeacher ? (
+                                  <div>
+                                    <div className="flex flex-wrap gap-1 max-w-[240px]">
+                                      {st.groupNames.length > 0 ? (
+                                        st.groupNames.map(gn => (
+                                          <span key={gn} className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/25 text-[10px] font-medium truncate max-w-[140px]">
+                                            {gn}
+                                          </span>
+                                        ))
+                                      ) : (
+                                        <span className="text-[11px] text-slate-500 italic">Biriktirilgan guruh yo'q</span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-slate-400 font-mono mt-1">
+                                      Guruhlar tushumi: <strong className="text-emerald-400">{formatMoney(st.groupRevenue)}</strong>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-500 text-xs italic">Qat'iy oylik (guruh bog'liq emas)</span>
+                                )}
+                              </td>
+
+                              <td className="p-3.5 font-black text-amber-400 whitespace-nowrap font-mono tabular-nums text-xs">
+                                {formatMoney(st.calculatedSalary)}
+                                {isTeacher && st.groupRevenue > 0 && (
+                                  <div className="text-[9px] text-slate-400 font-normal">
+                                    ({st.percent}% of {formatMoney(st.groupRevenue)})
+                                  </div>
+                                )}
+                              </td>
+
+                              <td className="p-3.5 font-bold text-cyan-400 whitespace-nowrap font-mono tabular-nums text-xs">
+                                {formatMoney(st.paidInExpenses)}
+                              </td>
+
+                              <td className="p-3.5 font-bold whitespace-nowrap font-mono tabular-nums text-xs">
+                                {isFullyPaid ? (
+                                  <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-md text-[11px]">
+                                    ✓ To'liq to'langan
+                                  </span>
+                                ) : (
+                                  <span className={st.balanceToPay > 0 ? "text-rose-400" : "text-slate-400"}>
+                                    {formatMoney(st.balanceToPay)}
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="p-3.5 whitespace-nowrap text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handlePayStaffSalary(st, st.balanceToPay > 0 ? st.balanceToPay : st.calculatedSalary, activePayrollMonth)}
+                                    disabled={st.calculatedSalary <= 0 || isFullyPaid}
+                                    className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[11px] font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1 cursor-pointer"
+                                    title="Oylik to'lash va harajatlar jadvaliga yozish"
+                                  >
+                                    <span>💵</span>
+                                    <span>To'lash</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      setStaffForm({
+                                        id: st.id,
+                                        name: st.name,
+                                        phone: st.phone || '+998 ',
+                                        role: st.role,
+                                        position: st.position,
+                                        percent: st.percent || 40,
+                                        fixedSalary: st.fixedSalary || 0,
+                                        status: st.status || 'active',
+                                        joinedDate: st.joinedDate || getTodayInputFormat()
+                                      });
+                                      setIsStaffModalOpen(true);
+                                    }}
+                                    className="p-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 hover:text-white border border-white/[0.08] transition-all cursor-pointer text-xs"
+                                    title="Tahrirlash"
+                                  >
+                                    ✏️
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleDeleteStaff(st.id)}
+                                    className="p-1.5 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 transition-colors text-xs font-bold cursor-pointer"
+                                    title="O'chirish"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      {filteredStaffList.length > 0 && (
+                        <tfoot>
+                          <tr className="bg-amber-950/30 border-t border-amber-500/30">
+                            <td colSpan={4} className="p-3.5 pl-5 font-black text-amber-300 text-xs uppercase tracking-wider">
+                              JAMI HISOB-KITOBLAR
+                            </td>
+                            <td className="p-3.5 font-black text-amber-400 text-sm whitespace-nowrap font-mono tabular-nums">
+                              {formatMoney(filteredStaffList.reduce((a, s) => a + s.calculatedSalary, 0))}
+                            </td>
+                            <td className="p-3.5 font-black text-cyan-400 text-xs whitespace-nowrap font-mono tabular-nums">
+                              {formatMoney(filteredStaffList.reduce((a, s) => a + s.paidInExpenses, 0))}
+                            </td>
+                            <td className="p-3.5 font-black text-rose-400 text-xs whitespace-nowrap font-mono tabular-nums">
+                              {formatMoney(filteredStaffList.reduce((a, s) => a + s.balanceToPay, 0))}
+                            </td>
+                            <td />
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ===== TAB 5: SUPABASE DATABASE CONFIG & SYNC ===== */}
             
             {/* ===== TAB 6: USERS & KICHIK ADMINLAR & ACTION LOGS (SUPER ADMIN ONLY) ===== */}
@@ -3862,33 +4589,39 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
                     <div>
                       <label className="block text-[11px] text-slate-300 font-medium mb-1">Oylik To'lov</label>
                       <input
-                        type="number"
+                        type="text"
                         disabled={!!formData.editId && !isSuperAdmin}
                         value={formData.oylikTolov}
-                        onChange={e => setFormData({ ...formData, oylikTolov: Number(e.target.value) })}
+                        onChange={e => setFormData({ ...formData, oylikTolov: e.target.value })}
+                        onBlur={e => setFormData({ ...formData, oylikTolov: autoExpandThousand(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] font-mono font-bold focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-[11px] text-emerald-400 font-bold mb-1">Naqd</label>
                       <input
-                        type="number"
+                        type="text"
                         disabled={!!formData.editId && !isSuperAdmin}
                         value={formData.naqd}
-                        onChange={e => setFormData({ ...formData, naqd: Number(e.target.value) })}
+                        onChange={e => setFormData({ ...formData, naqd: e.target.value })}
+                        onBlur={e => setFormData({ ...formData, naqd: autoExpandThousand(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-emerald-400 text-xs border border-emerald-500/40 font-mono font-bold focus:outline-none focus:border-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-[11px] text-blue-400 font-bold mb-1">Click / Karta</label>
                       <input
-                        type="number"
+                        type="text"
                         disabled={!!formData.editId && !isSuperAdmin}
                         value={formData.click}
-                        onChange={e => setFormData({ ...formData, click: Number(e.target.value) })}
+                        onChange={e => setFormData({ ...formData, click: e.target.value })}
+                        onBlur={e => setFormData({ ...formData, click: autoExpandThousand(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-blue-400 text-xs border border-blue-500/40 font-mono font-bold focus:outline-none focus:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     </div>
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    💡 Summa: <span className="text-amber-300 font-mono font-bold">500</span> yozilsa ➔ <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand((formData.click || 0) + (formData.naqd || 0)))}</span>
                   </div>
 
                   {/* Super Admin Edit Reason if editing an existing payment */}
@@ -4169,11 +4902,15 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
                     <div>
                       <label className="block text-[11px] text-slate-300 font-medium mb-1">Oylik To'lov Summasi (so'm)</label>
                       <input
-                        type="number"
+                        type="text"
                         value={studentForm.monthlyFee}
-                        onChange={e => setStudentForm({ ...studentForm, monthlyFee: Number(e.target.value) })}
+                        onChange={e => setStudentForm({ ...studentForm, monthlyFee: e.target.value })}
+                        onBlur={e => setStudentForm({ ...studentForm, monthlyFee: autoExpandThousand(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-emerald-400 font-bold font-mono text-xs border border-white/[0.08] focus:outline-none focus:border-emerald-500"
                       />
+                      <div className="text-[10px] text-slate-400 mt-1">
+                        💡 Summa: <span className="text-amber-300 font-mono font-bold">500</span> ➔ <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand(studentForm.monthlyFee || 0))}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -4263,21 +5000,33 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
                       <input
                         type="number" required
                         value={groupForm.fee}
-                        onChange={e => setGroupForm({ ...groupForm, fee: Number(e.target.value) })}
+                        onChange={e => setGroupForm({ ...groupForm, fee: e.target.value })}
+                        onBlur={e => setGroupForm({ ...groupForm, fee: autoExpandThousand(e.target.value) })}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-emerald-400 font-bold font-mono text-xs border border-white/[0.08] focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                   </div>
+                  <div className="text-[10px] text-slate-400">
+                    💡 Summa: <span className="text-amber-300 font-mono font-bold">500</span> yozilsa ➔ <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand(groupForm.fee || 0))}</span>
+                  </div>
 
                   <div>
-                    <label className="block text-[11px] text-slate-300 font-medium mb-1">O'qituvchi (Ustoz)</label>
-                    <input
-                      type="text"
-                      placeholder="O'qituvchi ismi"
+                    <label className="block text-[11px] text-slate-300 font-medium mb-1">O'qituvchi (Ustoz) *</label>
+                    <select
                       value={groupForm.teacher}
                       onChange={e => setGroupForm({ ...groupForm, teacher: e.target.value })}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] focus:outline-none focus:border-purple-500"
-                    />
+                    >
+                      <option value="">-- O'qituvchini tanlang --</option>
+                      {staff.filter(s => s.role === 'teacher').map(t => (
+                        <option key={t.id} value={t.name}>
+                          {t.name} ({t.percent}% foiz, {t.position || 'Ustoz'})
+                        </option>
+                      ))}
+                      {groupForm.teacher && !staff.some(s => s.name === groupForm.teacher) && (
+                        <option value={groupForm.teacher}>{groupForm.teacher} (Boshqa)</option>
+                      )}
+                    </select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2.5">
@@ -4316,6 +5065,181 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
                       className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-lg shadow-purple-600/30 transition-all cursor-pointer"
                     >
                       Guruhni Saqlash
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ===== ADD/EDIT STAFF & TEACHER MODAL ===== */}
+          {isStaffModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+              <div className="w-full max-w-lg rounded-3xl bg-slate-900/95 border border-amber-500/30 backdrop-blur-2xl p-6 space-y-4 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
+                  <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                    <span className="text-amber-400">👔</span>
+                    <span>{staffForm.id ? "Xodim Ma'lumotlarini Tahrirlash" : "Yangi Ustoz / Xodim Qo'shish"}</span>
+                  </h3>
+                  <button onClick={() => setIsStaffModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer">✕</button>
+                </div>
+
+                <form onSubmit={handleSaveStaff} className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] text-slate-300 font-medium mb-1">Xodim Turi (Roli) *</label>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setStaffForm({ ...staffForm, role: 'teacher' })}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                          staffForm.role === 'teacher'
+                            ? 'bg-amber-500/15 border-amber-500/60 ring-2 ring-amber-500/30 text-white'
+                            : 'bg-slate-950/60 border-white/[0.08] text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <div className="text-sm font-bold flex items-center gap-1.5 mb-1">
+                          <span>🎓</span> Ustoz (O'qituvchi)
+                        </div>
+                        <div className="text-[10px] text-amber-300/80 leading-snug">
+                          Guruhlar tushumidan belgilangan foiz (%) bo'yicha hisoblanadi
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setStaffForm({ ...staffForm, role: 'staff' })}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                          staffForm.role === 'staff'
+                            ? 'bg-indigo-500/15 border-indigo-500/60 ring-2 ring-indigo-500/30 text-white'
+                            : 'bg-slate-950/60 border-white/[0.08] text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <div className="text-sm font-bold flex items-center gap-1.5 mb-1">
+                          <span>💼</span> Boshqa Xodim
+                        </div>
+                        <div className="text-[10px] text-indigo-300/80 leading-snug">
+                          Qat'iy oylik (Admin, Menejer, Tozalik va h.k.)
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] text-slate-300 font-medium mb-1">F.I.SH (Ism Familiya) *</label>
+                      <input
+                        type="text" required
+                        placeholder="Masalan: Sardorbek Karimov"
+                        value={staffForm.name}
+                        onChange={e => setStaffForm({ ...staffForm, name: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] focus:outline-none focus:border-amber-500 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-300 font-medium mb-1">Telefon Raqami</label>
+                      <input
+                        type="text"
+                        placeholder="+998 90 123 45 67"
+                        value={staffForm.phone}
+                        onChange={e => setStaffForm({ ...staffForm, phone: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] focus:outline-none focus:border-amber-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-300 font-medium mb-1">Lavozimi / Yo'nalishi *</label>
+                    <input
+                      type="text" required
+                      placeholder={staffForm.role === 'teacher' ? "Masalan: Frontend ReactJS Ustozi" : "Masalan: Bosh Administrator / SMM Menejeri"}
+                      value={staffForm.position}
+                      onChange={e => setStaffForm({ ...staffForm, position: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] focus:outline-none focus:border-amber-500 font-medium"
+                    />
+                  </div>
+
+                  {staffForm.role === 'teacher' ? (
+                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                          <span>📊</span> Ustozning Foiz Stavkasi (%) *
+                        </label>
+                        <span className="text-base font-black text-amber-400 font-mono">{staffForm.percent}%</span>
+                      </div>
+                      <input
+                        type="range" min="10" max="90" step="5"
+                        value={staffForm.percent}
+                        onChange={e => setStaffForm({ ...staffForm, percent: Number(e.target.value) })}
+                        className="w-full accent-amber-500 cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                        <span>10% (Past)</span>
+                        <span>40% (Standart)</span>
+                        <span>50% (Teng)</span>
+                        <span>90% (Maksimal)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 mt-1">
+                        💡 Ustozga biriktirilgan guruhlar oylik tushumining <strong className="text-amber-400">{staffForm.percent}%</strong> qismi avtomatik oylik hisoblanadi.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 space-y-2">
+                      <label className="block text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                        <span>💰</span> Qat'iy Oylik Maoshi (so'm) *
+                      </label>
+                      <input
+                        type="text" required
+                        value={staffForm.fixedSalary}
+                        onChange={e => setStaffForm({ ...staffForm, fixedSalary: e.target.value })}
+                        onBlur={e => setStaffForm({ ...staffForm, fixedSalary: autoExpandThousand(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-indigo-300 font-bold font-mono text-sm border border-indigo-500/40 focus:outline-none focus:border-indigo-400"
+                        placeholder="3500000"
+                      />
+                      <p className="text-[10px] text-slate-300">
+                        💡 Masalan: <span className="text-amber-300 font-mono font-bold">500</span> yozilsa ➔ <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand(staffForm.fixedSalary || 0))}</span>
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] text-slate-300 font-medium mb-1">Ishga Kirgan Sana</label>
+                      <input
+                        type="date"
+                        value={staffForm.joinedDate}
+                        onChange={e => setStaffForm({ ...staffForm, joinedDate: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-300 font-medium mb-1">Holati (Status)</label>
+                      <select
+                        value={staffForm.status}
+                        onChange={e => setStaffForm({ ...staffForm, status: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="active">● Faol (Ishlamoqda)</option>
+                        <option value="vacation">🏖️ Ta'tilda</option>
+                        <option value="inactive">⏸ Faol emas</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2.5 pt-3 border-t border-white/[0.08]">
+                    <button
+                      type="button"
+                      onClick={() => setIsStaffModalOpen(false)}
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-semibold cursor-pointer transition-all"
+                    >
+                      Bekor qilish
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs font-extrabold shadow-lg shadow-amber-500/25 transition-all cursor-pointer"
+                    >
+                      {staffForm.id ? "O'zgarishlarni Saqlash" : "Xodimni Saqlash"}
                     </button>
                   </div>
                 </form>
@@ -4464,12 +5388,9 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
                         onChange={e => setExpenseForm({...expenseForm, category: e.target.value})}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] focus:outline-none focus:border-rose-500"
                       >
-                        <option>Oqituvchilar oyligi</option>
-                        <option>Reklama va Target</option>
-                        <option>Markaz xarajatlari</option>
-                        <option>Kommunal va Ijara</option>
-                        <option>Jihozlar va texnika</option>
-                        <option>Boshqa</option>
+                        {EXPENSE_CATEGORIES.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -4504,12 +5425,16 @@ ALTER TABLE action_logs DISABLE ROW LEVEL SECURITY;`;
                     <div>
                       <label className="block text-[11px] text-rose-400 font-bold mb-1">Summa (so'm) *</label>
                       <input
-                        type="number" required min="0"
+                        type="text" required
                         value={expenseForm.amount}
                         onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})}
+                        onBlur={e => setExpenseForm({...expenseForm, amount: autoExpandThousand(e.target.value)})}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-rose-400 text-xs border border-rose-500/40 font-mono font-bold focus:outline-none focus:border-rose-400"
                         placeholder="0"
                       />
+                      <div className="text-[10px] text-slate-400 mt-1">
+                        💡 <span className="text-amber-300 font-mono font-bold">500</span> ➔ <span className="text-rose-400 font-mono font-bold">{formatMoney(autoExpandThousand(expenseForm.amount || 0))}</span>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-[11px] text-slate-300 font-medium mb-1">Qabul qiluvchi</label>
