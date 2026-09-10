@@ -5161,27 +5161,57 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   </div>
 
                   {staffForm.role === 'teacher' ? (
-                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                          <span>📊</span> Ustozning Foiz Stavkasi (%) *
+                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-amber-300 mb-1.5 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <span>📊</span> Ustozning Foiz Stavkasi (%) *
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-normal">
+                            (Qo'lda kiritish yoki tezkor tanlash)
+                          </span>
                         </label>
-                        <span className="text-base font-black text-amber-400 font-mono">{staffForm.percent}%</span>
+                        <div className="relative flex items-center">
+                          <input
+                            type="number"
+                            required
+                            min="0"
+                            max="100"
+                            step="any"
+                            placeholder="Masalan: 40 yoki 45"
+                            value={staffForm.percent}
+                            onChange={e => setStaffForm({ ...staffForm, percent: e.target.value === '' ? '' : Number(e.target.value) })}
+                            className="w-full pl-4 pr-12 py-2.5 rounded-xl bg-slate-950/80 text-amber-400 font-black font-mono text-base border border-amber-500/40 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                          />
+                          <span className="absolute right-4 text-base font-black text-amber-400/80 font-mono pointer-events-none">
+                            %
+                          </span>
+                        </div>
                       </div>
-                      <input
-                        type="range" min="10" max="90" step="5"
-                        value={staffForm.percent}
-                        onChange={e => setStaffForm({ ...staffForm, percent: Number(e.target.value) })}
-                        className="w-full accent-amber-500 cursor-pointer"
-                      />
-                      <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                        <span>10% (Past)</span>
-                        <span>40% (Standart)</span>
-                        <span>50% (Teng)</span>
-                        <span>90% (Maksimal)</span>
+
+                      {/* Quick preset percentage pills for convenience */}
+                      <div>
+                        <div className="text-[10px] text-slate-400 mb-1 font-medium">Tezkor foizlar:</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[25, 30, 35, 40, 45, 50, 60, 70].map(p => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setStaffForm({ ...staffForm, percent: p })}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                                Number(staffForm.percent) === p
+                                  ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30 scale-105'
+                                  : 'bg-slate-800/80 hover:bg-slate-700 text-amber-300 border border-amber-500/30'
+                              }`}
+                            >
+                              {p}%
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <p className="text-[11px] text-slate-300 mt-1">
-                        💡 Ustozga biriktirilgan guruhlar oylik tushumining <strong className="text-amber-400">{staffForm.percent}%</strong> qismi avtomatik oylik hisoblanadi.
+
+                      <p className="text-[11px] text-slate-300">
+                        💡 Ustozga biriktirilgan guruhlar oylik tushumining <strong className="text-amber-400 font-bold">{staffForm.percent || 0}%</strong> qismi avtomatik oylik hisoblanadi.
                       </p>
                     </div>
                   ) : (
