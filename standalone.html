@@ -354,6 +354,175 @@ ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
 ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
 
     // Main App Component
+    
+    // Default system users (Admin & Cashier/Operator)
+    const DEFAULT_USERS = [
+      {
+        id: 'USR-101',
+        username: 'admin',
+        password: 'admin777',
+        fullName: 'Laziz aka (Admin)',
+        role: 'admin',
+        phone: '+998 90 123 45 67',
+        createdAt: '2026-09-01'
+      },
+      {
+        id: 'USR-102',
+        username: 'kassir1',
+        password: '12345',
+        fullName: 'Malika Rahimova',
+        role: 'operator',
+        phone: '+998 93 456 78 90',
+        createdAt: '2026-09-01'
+      }
+    ];
+
+    // Login Screen Component
+    const LoginScreen = ({ onLogin, users }) => {
+      const [username, setUsername] = React.useState('');
+      const [password, setPassword] = React.useState('');
+      const [showPassword, setShowPassword] = React.useState(false);
+      const [errorMsg, setErrorMsg] = React.useState('');
+      const [rememberMe, setRememberMe] = React.useState(true);
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        setErrorMsg('');
+        const trimmed = username.toLowerCase().trim();
+        const found = users.find(
+          u => u.username.toLowerCase().trim() === trimmed && u.password === password
+        );
+        if (found) {
+          onLogin(found, rememberMe);
+        } else {
+          setErrorMsg("Login yoki parol noto'g'ri! Iltimos, qayta tekshirib ko'ring.");
+        }
+      };
+
+      const handleQuickFill = (uLogin, uPass) => {
+        setUsername(uLogin);
+        setPassword(uPass);
+        setErrorMsg('');
+      };
+
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 text-slate-100 relative overflow-hidden font-sans select-none">
+          {/* Background glowing gradients */}
+          <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <div className="w-full max-w-md rounded-3xl bg-slate-900/95 border border-slate-800 p-8 shadow-2xl backdrop-blur-xl relative z-10 space-y-6">
+            {/* Brand Header */}
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-lg shadow-emerald-500/30 text-3xl mb-1">
+                ⚡
+              </div>
+              <h1 className="text-2xl font-extrabold text-white tracking-tight">EduFinance CRM</h1>
+              <p className="text-xs text-slate-400">
+                O'quv markazi moliya va xodimlar boshqaruv tizimi
+              </p>
+            </div>
+
+            {/* Error message */}
+            {errorMsg && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Login (Foydalanuvchi nomi) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-slate-500 text-sm">👤</span>
+                  <input
+                    type="text"
+                    required
+                    value={username}
+                    onChange={(e) => { setUsername(e.target.value); setErrorMsg(''); }}
+                    placeholder="Masalan: admin yoki kassir1"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Parol *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-3 text-slate-500 text-sm">🔒</span>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setErrorMsg(''); }}
+                    placeholder="Parolingizni kiriting"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-2.5 text-slate-400 hover:text-white text-sm"
+                    title={showPassword ? "Yashirish" : "Ko'rsatish"}
+                  >
+                    {showPassword ? "🙈" : "👁️"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-400 hover:text-slate-300 select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded bg-slate-800 border-slate-700 text-emerald-600 focus:ring-0"
+                  />
+                  <span>Meni eslab qol</span>
+                </label>
+                <span className="text-[11px] text-slate-500">🔒 Himoyalangan sessiya</span>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Tizimga Kirish</span>
+                <span>→</span>
+              </button>
+            </form>
+
+            {/* Quick Demo Access Pills */}
+            <div className="pt-2 border-t border-slate-800/80 text-center space-y-2">
+              <p className="text-[11px] text-slate-400 font-medium">Boshlang'ich hisoblar (1-klikda sinab ko'rish):</p>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill('admin', 'admin777')}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-emerald-400 font-mono border border-emerald-500/30 transition-all cursor-pointer"
+                >
+                  👑 Admin (admin / admin777)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill('kassir1', '12345')}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-indigo-400 font-mono border border-indigo-500/30 transition-all cursor-pointer"
+                >
+                  💳 Kassir (kassir1 / 12345)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     function App() {
       const currentCalMonth = getCurrentMonthString();
 
@@ -518,9 +687,10 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
       }, [supabaseConfig]);
 
       // Supabase Push (Upload All Data to Supabase)
-      const handleSyncToSupabase = async () => {
+      const handleSyncToSupabase = async (opts = {}) => {
+        const isSilent = opts && opts.silent;
         if (!supabase) {
-          showToast("Supabase sozlamalari to'liq emas (URL yoki Anon Key xato)!");
+          if (!isSilent) showToast("Supabase sozlamalari to'liq emas (URL yoki Anon Key xato)!");
           return;
         }
         setIsSyncing(true);
@@ -572,60 +742,91 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
           showToast("Barcha ma'lumotlar Supabase bulutiga muvaffaqiyatli saqlandi! 🚀");
         } catch (err) {
           console.error(err);
-          alert(err.message + "\n\nIltimos, Supabase SQL Editor da jadvallar yaratilganini tekshiring (SQL skriptini Sozlamalar bo'limidan nusxalashingiz mumkin).");
+          if (!isSilent) {
+            alert(err.message + "\n\nIltimos, Supabase SQL Editor da RLS ni o'chirish skriptini ishga tushiring:\nALTER TABLE groups DISABLE ROW LEVEL SECURITY;");
+          }
         } finally {
           setIsSyncing(false);
         }
       };
 
       // Supabase Pull (Fetch All Data from Supabase)
-      const handlePullFromSupabase = async () => {
+      const handlePullFromSupabase = async (opts = {}) => {
+        const isSilent = opts && opts.silent;
         if (!supabase) {
-          showToast("Supabase ulanmagan!");
+          if (!isSilent) showToast("Supabase ulanmagan!");
           return;
         }
         setIsSyncing(true);
+        let pullSuccess = false;
         try {
-          const { data: gData, error: gErr } = await supabase.from('groups').select('*');
-          if (gErr) throw gErr;
-          if (gData && gData.length > 0) setGroups(gData);
+          // 1. Pull Groups
+          try {
+            const { data: gData, error: gErr } = await supabase.from('groups').select('*');
+            if (!gErr && gData && gData.length > 0) {
+              setGroups(gData);
+              pullSuccess = true;
+            }
+          } catch(ge) { console.warn('Groups pull notice:', ge); }
 
-          const { data: sData, error: sErr } = await supabase.from('students').select('*');
-          if (sErr) throw sErr;
-          if (sData && sData.length > 0) {
-            setStudents(sData.map(s => ({
-              id: s.id, name: s.name, phone: s.phone, parentPhone: s.parent_phone,
-              group: s.group, monthlyFee: Number(s.monthly_fee), status: s.status, joinedDate: s.joined_date
-            })));
+          // 2. Pull Students
+          try {
+            const { data: sData, error: sErr } = await supabase.from('students').select('*');
+            if (!sErr && sData && sData.length > 0) {
+              setStudents(sData.map(s => ({
+                id: s.id, name: s.name, phone: s.phone, parentPhone: s.parent_phone,
+                group: s.group, monthlyFee: Number(s.monthly_fee), status: s.status, joinedDate: s.joined_date
+              })));
+              pullSuccess = true;
+            }
+          } catch(se) { console.warn('Students pull notice:', se); }
+
+          // 3. Pull Months
+          try {
+            const { data: mData, error: mErr } = await supabase.from('months').select('*');
+            if (!mErr && mData && mData.length > 0) {
+              setMonths(mData.map(m => m.name));
+              pullSuccess = true;
+            }
+          } catch(me) { console.warn('Months pull notice:', me); }
+
+          // 4. Pull Payments
+          try {
+            const { data: pData, error: pErr } = await supabase.from('payments').select('*');
+            if (!pErr && pData && pData.length > 0) {
+              setPayments(pData.map(p => ({
+                id: p.id, studentId: p.student_id, studentName: p.student_name,
+                phoneStudent: p.phone_student, phoneParent: p.phone_parent,
+                oylikTolov: Number(p.oylik_tolov), naqd: Number(p.naqd), click: Number(p.click),
+                paymentDate: p.payment_date, naqd2: Number(p.naqd2 || 0), click2: Number(p.click2 || 0),
+                paymentDate2: p.payment_date2, month: p.month, paymentType: p.payment_type,
+                group: p.group, note: p.note, is3MonthPayment: p.is_3month_payment,
+                isPrepaid: p.is_prepaid, bittaToliqSumma: Number(p.bitta_toliq_summa || 0),
+                depozitBalansi: Number(p.depozit_balansi || 0)
+              })));
+              pullSuccess = true;
+            }
+          } catch(pe) { console.warn('Payments pull notice:', pe); }
+
+          // 5. Pull Expenses
+          try {
+            const { data: eData, error: eErr } = await supabase.from('expenses').select('*');
+            if (!eErr && eData && eData.length > 0) {
+              setExpenses(eData);
+              pullSuccess = true;
+            }
+          } catch(ee) { console.warn('Expenses pull notice:', ee); }
+
+          if (!isSilent) {
+            if (pullSuccess) {
+              showToast("Barcha ma'lumotlar Supabase dan muvaffaqiyatli yuklab olindi! ✅");
+            } else {
+              showToast("Supabase bazasida hozircha ma'lumotlar yo'q");
+            }
           }
-
-          const { data: mData, error: mErr } = await supabase.from('months').select('*');
-          if (mErr) throw mErr;
-          if (mData && mData.length > 0) setMonths(mData.map(m => m.name));
-
-          const { data: pData, error: pErr } = await supabase.from('payments').select('*');
-          if (pErr) throw pErr;
-          if (pData && pData.length > 0) {
-            setPayments(pData.map(p => ({
-              id: p.id, studentId: p.student_id, studentName: p.student_name,
-              phoneStudent: p.phone_student, phoneParent: p.phone_parent,
-              oylikTolov: Number(p.oylik_tolov), naqd: Number(p.naqd), click: Number(p.click),
-              paymentDate: p.payment_date, naqd2: Number(p.naqd2 || 0), click2: Number(p.click2 || 0),
-              paymentDate2: p.payment_date2, month: p.month, paymentType: p.payment_type,
-              group: p.group, note: p.note, is3MonthPayment: p.is_3month_payment,
-              isPrepaid: p.is_prepaid, bittaToliqSumma: Number(p.bitta_toliq_summa || 0),
-              depozitBalansi: Number(p.depozit_balansi || 0)
-            })));
-          }
-
-          const { data: eData, error: eErr } = await supabase.from('expenses').select('*');
-          if (eErr) throw eErr;
-          if (eData && eData.length > 0) setExpenses(eData);
-
-          showToast("Barcha ma'lumotlar Supabase dan muvaffaqiyatli yuklab olindi! ✅");
         } catch (err) {
           console.error(err);
-          alert("Yuklab olishda xatolik: " + err.message);
+          if (!isSilent) alert("Yuklab olishda xatolik: " + err.message);
         } finally {
           setIsSyncing(false);
         }
@@ -743,7 +944,7 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
         } catch (e) { console.error('Supabase month delete error:', e); }
       };
 
-      // Automatic initial connection and sync with Supabase
+      // Automatic initial connection and sync with Supabase (Independent per-table loader)
       useEffect(() => {
         if (!supabase || !supabaseConfig.url || !supabaseConfig.key) return;
 
@@ -751,52 +952,74 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
         const autoSyncOnStartup = async () => {
           setIsSyncing(true);
           try {
-            // Test query on students
-            const { data: sData, error: sErr } = await supabase.from('students').select('*');
-            if (sErr) {
-              console.warn('Supabase test select error:', sErr.message);
-              if (isMounted) setSupabaseConfig(prev => ({ ...prev, isConnected: false }));
-              return;
-            }
-            if (isMounted) setSupabaseConfig(prev => ({ ...prev, isConnected: true }));
+            let foundCloudData = false;
 
-            // If Supabase already has data, load it!
-            if (sData && sData.length > 0) {
-              if (isMounted) {
-                setStudents(sData.map(s => ({
-                  id: s.id, name: s.name, phone: s.phone, parentPhone: s.parent_phone,
-                  group: s.group, monthlyFee: Number(s.monthly_fee), status: s.status, joinedDate: s.joined_date
-                })));
+            // 1. Groups
+            try {
+              const { data: gData, error: gErr } = await supabase.from('groups').select('*');
+              if (!gErr && gData && gData.length > 0) {
+                if (isMounted) setGroups(gData);
+                foundCloudData = true;
               }
+            } catch(e) { console.warn('Cloud groups fetch notice:', e); }
 
-              const { data: gData } = await supabase.from('groups').select('*');
-              if (isMounted && gData && gData.length > 0) setGroups(gData);
-
-              const { data: mData } = await supabase.from('months').select('*');
-              if (isMounted && mData && mData.length > 0) setMonths(mData.map(m => m.name));
-
-              const { data: pData } = await supabase.from('payments').select('*');
-              if (isMounted && pData && pData.length > 0) {
-                setPayments(pData.map(p => ({
-                  id: p.id, studentId: p.student_id, studentName: p.student_name,
-                  phoneStudent: p.phone_student, phoneParent: p.phone_parent,
-                  oylikTolov: Number(p.oylik_tolov), naqd: Number(p.naqd), click: Number(p.click),
-                  paymentDate: p.payment_date, naqd2: Number(p.naqd2 || 0), click2: Number(p.click2 || 0),
-                  paymentDate2: p.payment_date2, month: p.month, paymentType: p.payment_type,
-                  group: p.group, note: p.note, is3MonthPayment: p.is_3month_payment,
-                  isPrepaid: p.is_prepaid, bittaToliqSumma: Number(p.bitta_toliq_summa || 0),
-                  depozitBalansi: Number(p.depozit_balansi || 0)
-                })));
+            // 2. Students
+            try {
+              const { data: sData, error: sErr } = await supabase.from('students').select('*');
+              if (!sErr && sData && sData.length > 0) {
+                if (isMounted) {
+                  setStudents(sData.map(s => ({
+                    id: s.id, name: s.name, phone: s.phone, parentPhone: s.parent_phone,
+                    group: s.group, monthlyFee: Number(s.monthly_fee), status: s.status, joinedDate: s.joined_date
+                  })));
+                }
+                foundCloudData = true;
               }
+            } catch(e) { console.warn('Cloud students fetch notice:', e); }
 
-              const { data: eData } = await supabase.from('expenses').select('*');
-              if (isMounted && eData && eData.length > 0) setExpenses(eData);
+            // 3. Months
+            try {
+              const { data: mData, error: mErr } = await supabase.from('months').select('*');
+              if (!mErr && mData && mData.length > 0) {
+                if (isMounted) setMonths(mData.map(m => m.name));
+                foundCloudData = true;
+              }
+            } catch(e) { console.warn('Cloud months fetch notice:', e); }
 
-              showToast("Supabase bulutidagi ma'lumotlar avtomatik yuklandi! ☁️✅");
-            } else {
-              // If Supabase is empty, push existing local data to cloud
-              await handleSyncToSupabase({ silent: true });
-              showToast("Lokal ma'lumotlar avtomatik Supabase bulutiga yuklandi! 🚀");
+            // 4. Payments
+            try {
+              const { data: pData, error: pErr } = await supabase.from('payments').select('*');
+              if (!pErr && pData && pData.length > 0) {
+                if (isMounted) {
+                  setPayments(pData.map(p => ({
+                    id: p.id, studentId: p.student_id, studentName: p.student_name,
+                    phoneStudent: p.phone_student, phoneParent: p.phone_parent,
+                    oylikTolov: Number(p.oylik_tolov), naqd: Number(p.naqd), click: Number(p.click),
+                    paymentDate: p.payment_date, naqd2: Number(p.naqd2 || 0), click2: Number(p.click2 || 0),
+                    paymentDate2: p.payment_date2, month: p.month, paymentType: p.payment_type,
+                    group: p.group, note: p.note, is3MonthPayment: p.is_3month_payment,
+                    isPrepaid: p.is_prepaid, bittaToliqSumma: Number(p.bitta_toliq_summa || 0),
+                    depozitBalansi: Number(p.depozit_balansi || 0)
+                  })));
+                }
+                foundCloudData = true;
+              }
+            } catch(e) { console.warn('Cloud payments fetch notice:', e); }
+
+            // 5. Expenses
+            try {
+              const { data: eData, error: eErr } = await supabase.from('expenses').select('*');
+              if (!eErr && eData && eData.length > 0) {
+                if (isMounted) setExpenses(eData);
+                foundCloudData = true;
+              }
+            } catch(e) { console.warn('Cloud expenses fetch notice:', e); }
+
+            if (isMounted) {
+              setSupabaseConfig(prev => ({ ...prev, isConnected: true }));
+              if (foundCloudData) {
+                showToast("Supabase bulutidagi ma'lumotlar avtomatik yuklandi! ☁️✅");
+              }
             }
           } catch (err) {
             console.error('Supabase auto load error:', err);
