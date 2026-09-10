@@ -277,7 +277,19 @@
     };
 
     // SQL Schema for Supabase
-    const SUPABASE_SQL_SCHEMA = `-- 1. Guruhlar jadvali
+    const SUPABASE_SQL_SCHEMA = `-- 0. Xodimlar (Super Admin va Kichik Adminlar) jadvali
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  role TEXT DEFAULT 'admin',
+  phone TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+
+-- 1. Guruhlar jadvali
 CREATE TABLE IF NOT EXISTS groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -355,23 +367,32 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
 
     // Main App Component
     
-    // Default system users (Admin & Cashier/Operator)
+    // System Users (Super Admin & Kichik Adminlar)
     const DEFAULT_USERS = [
       {
-        id: 'USR-101',
-        username: 'admin',
+        id: 'USR-100',
+        username: 'superadmin',
         password: 'admin777',
-        fullName: 'Laziz aka (Admin)',
-        role: 'admin',
+        fullName: 'Laziz aka (Super Admin)',
+        role: 'super_admin', // Super Admin (Barcha summalarni o'zgartira oladi)
+        phone: '+998 90 123 45 67',
+        createdAt: '2026-09-01'
+      },
+      {
+        id: 'USR-101',
+        username: 'admin', // alias for superadmin
+        password: 'admin777',
+        fullName: 'Laziz aka (Super Admin)',
+        role: 'super_admin',
         phone: '+998 90 123 45 67',
         createdAt: '2026-09-01'
       },
       {
         id: 'USR-102',
-        username: 'kassir1',
+        username: 'admin1',
         password: '12345',
-        fullName: 'Malika Rahimova',
-        role: 'operator',
+        fullName: 'Malika Rahimova (Kichik Admin)',
+        role: 'admin', // Kichik Admin (Faqat ma'lumot kiritadi, summani o'zgartira olmaydi)
         phone: '+998 93 456 78 90',
         createdAt: '2026-09-01'
       }
@@ -501,20 +522,20 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
             {/* Quick Demo Access Pills */}
             <div className="pt-2 border-t border-slate-800/80 text-center space-y-2">
               <p className="text-[11px] text-slate-400 font-medium">Boshlang'ich hisoblar (1-klikda sinab ko'rish):</p>
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <button
                   type="button"
-                  onClick={() => handleQuickFill('admin', 'admin777')}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-emerald-400 font-mono border border-emerald-500/30 transition-all cursor-pointer"
+                  onClick={() => handleQuickFill('superadmin', 'admin777')}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-emerald-400 font-mono border border-emerald-500/30 transition-all cursor-pointer flex items-center gap-1"
                 >
-                  👑 Admin (admin / admin777)
+                  <span>👑</span> Super Admin (superadmin / admin777)
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleQuickFill('kassir1', '12345')}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-indigo-400 font-mono border border-indigo-500/30 transition-all cursor-pointer"
+                  onClick={() => handleQuickFill('admin1', '12345')}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-indigo-400 font-mono border border-indigo-500/30 transition-all cursor-pointer flex items-center gap-1"
                 >
-                  💳 Kassir (kassir1 / 12345)
+                  <span>💳</span> Kichik Admin (admin1 / 12345)
                 </button>
               </div>
             </div>
@@ -526,7 +547,57 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
     function App() {
       const currentCalMonth = getCurrentMonthString();
 
-      // Active Section Tab: 'tushum' | 'harajat' | 'students' | 'groups' | 'supabase'
+      // Users & Auth State
+      const [users, setUsers] = useState(() => {
+        const saved = localStorage.getItem('edufinance_users_v2');
+        return saved ? JSON.parse(saved) : DEFAULT_USERS;
+      });
+
+      const [currentUser, setCurrentUser] = useState(() => {
+        const savedLocal = localStorage.getItem('edufinance_auth_user');
+        const savedSession = sessionStorage.getItem('edufinance_auth_user');
+        const saved = savedLocal || savedSession;
+        return saved ? JSON.parse(saved) : null;
+      });
+
+      // Audit History Modal State (Old amount vs New amount view)
+      const [viewHistoryItem, setViewHistoryItem] = useState(null);
+
+      const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+      const [userForm, setUserForm] = useState({
+        id: '',
+        username: '',
+        password: '',
+        fullName: '',
+        role: 'admin', // 'admin' (Kichik Admin)
+        phone: '+998 '
+      });
+
+      // Save users to localStorage
+      useEffect(() => {
+        localStorage.setItem('edufinance_users_v2', JSON.stringify(users));
+      }, [users]);
+
+      const handleLogin = (user, rememberMe) => {
+        setCurrentUser(user);
+        if (rememberMe) {
+          localStorage.setItem('edufinance_auth_user', JSON.stringify(user));
+        } else {
+          sessionStorage.setItem('edufinance_auth_user', JSON.stringify(user));
+        }
+        showToast(`Xush kelibsiz, ${user.fullName}! (${user.role === 'super_admin' ? 'Super Admin' : 'Kichik Admin'})`);
+      };
+
+      const handleLogout = () => {
+        setCurrentUser(null);
+        localStorage.removeItem('edufinance_auth_user');
+        sessionStorage.removeItem('edufinance_auth_user');
+        showToast("Tizimdan muvaffaqiyatli chiqildi!");
+      };
+
+      const isSuperAdmin = currentUser?.role === 'super_admin';
+
+      // Active Section Tab: 'tushum' | 'harajat' | 'students' | 'groups' | 'users' | 'supabase'
       const [activeTab, setActiveTab] = useState('tushum');
 
       // Supabase Config State (window.SUPABASE_CONFIG or localStorage)
@@ -700,6 +771,12 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
             id: g.id, name: g.name, category: g.category, fee: g.fee,
             teacher: g.teacher, days: g.days, room: g.room
           }));
+          const mappedUsers = users.map(u => ({
+            id: u.id, username: u.username, password: u.password,
+            full_name: u.fullName, role: u.role || 'admin', phone: u.phone || ''
+          }));
+          try { await supabase.from('users').upsert(mappedUsers); } catch(ue) { console.warn('Users sync notice:', ue); }
+
           const { error: gErr } = await supabase.from('groups').upsert(mappedGroups);
           if (gErr) throw new Error("Guruhlarni yuklashda xato: " + gErr.message);
 
@@ -751,6 +828,78 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
       };
 
       // Supabase Pull (Fetch All Data from Supabase)
+      
+      // Supabase Live Sync for Users
+      const syncUserToSupabase = async (u) => {
+        if (!supabase || !supabaseConfig.autoSync) return;
+        try {
+          await supabase.from('users').upsert({
+            id: u.id,
+            username: u.username,
+            password: u.password,
+            full_name: u.fullName,
+            role: u.role || 'admin',
+            phone: u.phone || ''
+          });
+        } catch (e) { console.error('Supabase user sync error:', e); }
+      };
+
+      const deleteUserFromSupabase = async (id) => {
+        if (!supabase || !supabaseConfig.autoSync) return;
+        try {
+          await supabase.from('users').delete().eq('id', id);
+        } catch (e) { console.error('Supabase user delete error:', e); }
+      };
+
+      const handleSaveUser = (e) => {
+        e.preventDefault();
+        if (!isSuperAdmin) {
+          alert("Faqat Super Admin yangi kichik adminlarni qo'sha oladi!");
+          return;
+        }
+        if (!userForm.username.trim() || !userForm.password.trim() || !userForm.fullName.trim()) {
+          showToast("Iltimos, barcha maydonlarni to'ldiring!");
+          return;
+        }
+        const isExisting = users.some(u => u.id === userForm.id);
+        let savedUser;
+        if (isExisting) {
+          savedUser = { ...userForm };
+          setUsers(prev => prev.map(u => u.id === userForm.id ? savedUser : u));
+          showToast("Xodim ma'lumotlari yangilandi!");
+        } else {
+          if (users.some(u => u.username.toLowerCase() === userForm.username.toLowerCase())) {
+            alert("Bu login allaqachon mavjud! Boshqa login tanlang.");
+            return;
+          }
+          savedUser = {
+            ...userForm,
+            id: 'USR-' + Math.floor(100 + Math.random() * 900),
+            createdAt: getTodayInputFormat()
+          };
+          setUsers(prev => [...prev, savedUser]);
+          showToast(`Yangi kichik admin qo'shildi: ${savedUser.fullName}`);
+        }
+        syncUserToSupabase(savedUser);
+        setIsUserModalOpen(false);
+      };
+
+      const handleDeleteUser = (id) => {
+        if (!isSuperAdmin) {
+          alert("Faqat Super Admin kichik adminlarni o'chira oladi!");
+          return;
+        }
+        if (currentUser && currentUser.id === id) {
+          alert("O'zingizning hisobingizni o'chira olmaysiz!");
+          return;
+        }
+        if (confirm("Haqiqatdan ham ushbu kichik adminni o'chirmoqchimisiz?")) {
+          setUsers(prev => prev.filter(u => u.id !== id));
+          deleteUserFromSupabase(id);
+          showToast("Kichik admin o'chirildi");
+        }
+      };
+
       const handlePullFromSupabase = async (opts = {}) => {
         const isSilent = opts && opts.silent;
         if (!supabase) {
@@ -892,7 +1041,9 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
             is_3month_payment: Boolean(p.is3MonthPayment),
             is_prepaid: Boolean(p.isPrepaid),
             bitta_toliq_summa: Number(p.bittaToliqSumma || 0),
-            depozit_balansi: Number(p.depozitBalansi || 0)
+            depozit_balansi: Number(p.depozitBalansi || 0),
+            operator: p.operator || currentUser?.fullName || 'Admin',
+            history: p.history ? JSON.stringify(p.history) : null
           }));
           await supabase.from('payments').upsert(mapped);
         } catch (e) { console.error('Supabase payments sync error:', e); }
@@ -1307,26 +1458,70 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
           currentStudentId = studentExists.id;
         }
 
-        // Check if student already has a payment record for same month+group
-        const existingIdx = !formData.is3MonthPayment ? updated.findIndex(p =>
-          (p.studentId && currentStudentId && p.studentId === currentStudentId && p.month === formData.month) ||
-          (p.studentName.toLowerCase() === formData.studentName.toLowerCase() &&
-           p.month === formData.month &&
-           p.group === formData.group &&
-           !p.isPrepaid && !p.is3MonthPayment &&
-           !p.naqd2 && !p.click2)
-        ) : -1;
+        // Check if student already has a payment record for same month+group or editing
+        const existingIdx = formData.editId 
+          ? updated.findIndex(p => p.id === formData.editId)
+          : (!formData.is3MonthPayment ? updated.findIndex(p =>
+              (p.studentId && currentStudentId && p.studentId === currentStudentId && p.month === formData.month) ||
+              (p.studentName.toLowerCase() === formData.studentName.toLowerCase() &&
+               p.month === formData.month &&
+               p.group === formData.group &&
+               !p.isPrepaid && !p.is3MonthPayment &&
+               !p.naqd2 && !p.click2)
+            ) : -1);
 
         if (existingIdx >= 0) {
           const ex = updated[existingIdx];
-          if ((Number(ex.naqd || 0) + Number(ex.click || 0)) === 0) {
+          const oldNaqd = Number(ex.naqd || 0);
+          const oldClick = Number(ex.click || 0);
+          const oldOylik = Number(ex.oylikTolov || 0);
+          const oldTotal = oldNaqd + oldClick + Number(ex.naqd2 || 0) + Number(ex.click2 || 0);
+
+          let newNaqd = Number(formData.naqd || 0);
+          let newClick = Number(formData.click || 0);
+          let newOylik = Number(formData.oylikTolov || 0);
+
+          // RESTRICTION: Non-super-admins cannot alter existing payment amounts!
+          if (!isSuperAdmin) {
+            newNaqd = oldNaqd;
+            newClick = oldClick;
+            newOylik = oldOylik;
+          }
+
+          // Build Audit History if Super Admin changed amounts
+          let historyList = Array.isArray(ex.history) ? [...ex.history] : [];
+          const amountChanges = [];
+          if (oldNaqd !== newNaqd) amountChanges.push({ field: 'Naqd', oldVal: oldNaqd, newVal: newNaqd });
+          if (oldClick !== newClick) amountChanges.push({ field: 'Click', oldVal: oldClick, newVal: newClick });
+          if (oldOylik !== newOylik) amountChanges.push({ field: 'Oylik to'lov', oldVal: oldOylik, newVal: newOylik });
+
+          if (isSuperAdmin && amountChanges.length > 0) {
+            const newTotal = newNaqd + newClick + Number(ex.naqd2 || 0) + Number(ex.click2 || 0);
+            const revision = {
+              id: 'REV-' + Date.now(),
+              changedAt: getTodayInputFormat() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              changedBy: currentUser ? currentUser.fullName : 'Super Admin',
+              role: 'Super Admin',
+              oldTotal: oldTotal,
+              newTotal: newTotal,
+              changes: amountChanges,
+              note: formData.editReason || 'Super Admin tomonidan summa o'zgartirildi'
+            };
+            historyList.unshift(revision);
+            showToast(`Summa muvaffaqiyatli o'zgartirildi va tarixga yozildi! (Eski: ${formatMoney(oldTotal)} → Yangi: ${formatMoney(newTotal)})`);
+          }
+
+          if ((Number(ex.naqd || 0) + Number(ex.click || 0)) === 0 && !formData.editId) {
             updated[existingIdx] = {
               ...ex,
               ...formData,
               studentId: currentStudentId,
               id: ex.id,
-              naqd: Number(formData.naqd || 0),
-              click: Number(formData.click || 0),
+              naqd: newNaqd,
+              click: newClick,
+              oylikTolov: newOylik,
+              operator: ex.operator || (currentUser ? currentUser.fullName : 'Admin'),
+              history: historyList,
               paymentDate: formData.paymentDate || getTodayInputFormat(),
               note: formData.note ? formData.note : (ex.note || '')
             };
@@ -1334,17 +1529,21 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
             updated[existingIdx] = {
               ...ex,
               studentId: currentStudentId,
-              naqd2: Number(formData.naqd || 0),
-              click2: Number(formData.click || 0),
-              paymentDate2: formData.paymentDate || getTodayInputFormat(),
-              note2: formData.note || '',
-              note: (ex.note || '') + (formData.note ? ` | 2-to'lov: ${formData.note}` : '')
+              naqd: newNaqd,
+              click: newClick,
+              oylikTolov: newOylik,
+              operator: ex.operator || (currentUser ? currentUser.fullName : 'Admin'),
+              history: historyList,
+              paymentDate: formData.paymentDate || ex.paymentDate || getTodayInputFormat(),
+              note: formData.note || ex.note || ''
             };
           }
         } else {
           const newPayment = { 
             ...formData, 
             studentId: currentStudentId,
+            operator: currentUser ? currentUser.fullName : 'Admin',
+            history: [],
             naqd: Number(formData.naqd || 0),
             click: Number(formData.click || 0),
             bittaToliqSumma: lumpSum, 
@@ -1514,6 +1713,11 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
           return true;
         });
       }, [students, studentSearchTerm, studentFilterGroup]);
+
+      // If user is not logged in, show full-screen Login Screen
+      if (!currentUser) {
+        return <LoginScreen onLogin={handleLogin} users={users} />;
+      }
 
       return (
         <div className="h-screen flex flex-col bg-slate-950 overflow-hidden text-slate-100">
@@ -2483,6 +2687,132 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
             )}
 
             {/* ===== TAB 5: SUPABASE DATABASE CONFIG & SYNC ===== */}
+            
+            {/* ===== TAB 6: USERS & KICHIK ADMINLAR (SUPER ADMIN ONLY) ===== */}
+            {activeTab === 'users' && isSuperAdmin && (
+              <div className="space-y-4">
+                <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/40 border border-slate-800 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-2xl">
+                      👑
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-white flex items-center gap-2">
+                        Kichik Adminlar Boshqaruvi
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
+                          Faqat Super Admin
+                        </span>
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Kichik adminlar ma'lumot (to'lov, guruh, student) kiritishi mumkin, lekin kiritilgan summalarni o'zgartira olmaydi.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setUserForm({
+                        id: '',
+                        username: '',
+                        password: '',
+                        fullName: '',
+                        role: 'admin',
+                        phone: '+998 '
+                      });
+                      setIsUserModalOpen(true);
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>+</span> Yangi Kichik Admin Qo'shish
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {users.map((u) => {
+                    const isSelf = currentUser && currentUser.id === u.id;
+                    const isSuper = u.role === 'super_admin';
+
+                    return (
+                      <div
+                        key={u.id}
+                        className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all shadow-lg flex flex-col justify-between space-y-4"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold text-white shadow ${
+                              isSuper ? 'bg-gradient-to-tr from-amber-500 to-orange-600' : 'bg-gradient-to-tr from-indigo-500 to-teal-500'
+                            }`}>
+                              {isSuper ? '👑' : u.fullName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                                {u.fullName}
+                                {isSelf && (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                    Siz
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-400 font-mono mt-0.5">
+                                @{u.username}
+                              </div>
+                            </div>
+                          </div>
+
+                          <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold border ${
+                            isSuper
+                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                              : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                          }`}>
+                            {isSuper ? '👑 Super Admin' : '💳 Kichik Admin'}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5 text-xs text-slate-300 border-t border-slate-800/80 pt-3">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-500">Parol:</span>
+                            <span className="font-mono text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700/60">
+                              {u.password}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-500">Huquqlari:</span>
+                            <span className={isSuper ? "text-amber-400 font-semibold" : "text-slate-300"}>
+                              {isSuper ? "To'liq nazorat (Summalarni tahrirlash)" : "Faqat kiritish (Summa qulflangan)"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-500">Telefon:</span>
+                            <span className="text-slate-300">{u.phone || '—'}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 border-t border-slate-800/80 pt-3">
+                          <button
+                            onClick={() => {
+                              setUserForm({ ...u });
+                              setIsUserModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            Tahrirlash
+                          </button>
+                          {!isSelf && (
+                            <button
+                              onClick={() => handleDeleteUser(u.id)}
+                              className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+                            >
+                              O'chirish
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {activeTab === 'supabase' && (
               <div className="space-y-5">
                 <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/50 border border-slate-800 flex flex-wrap items-center justify-between gap-4 shadow-xl">
