@@ -1493,7 +1493,7 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
           const amountChanges = [];
           if (oldNaqd !== newNaqd) amountChanges.push({ field: 'Naqd', oldVal: oldNaqd, newVal: newNaqd });
           if (oldClick !== newClick) amountChanges.push({ field: 'Click', oldVal: oldClick, newVal: newClick });
-          if (oldOylik !== newOylik) amountChanges.push({ field: 'Oylik to'lov', oldVal: oldOylik, newVal: newOylik });
+          if (oldOylik !== newOylik) amountChanges.push({ field: "Oylik to'lov", oldVal: oldOylik, newVal: newOylik });
 
           if (isSuperAdmin && amountChanges.length > 0) {
             const newTotal = newNaqd + newClick + Number(ex.naqd2 || 0) + Number(ex.click2 || 0);
@@ -1505,7 +1505,7 @@ ALTER TABLE months DISABLE ROW LEVEL SECURITY;`;
               oldTotal: oldTotal,
               newTotal: newTotal,
               changes: amountChanges,
-              note: formData.editReason || 'Super Admin tomonidan summa o'zgartirildi'
+              note: formData.editReason || "Super Admin tomonidan summa o'zgartirildi"
             };
             historyList.unshift(revision);
             showToast(`Summa muvaffaqiyatli o'zgartirildi va tarixga yozildi! (Eski: ${formatMoney(oldTotal)} → Yangi: ${formatMoney(newTotal)})`);
