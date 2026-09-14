@@ -55,6 +55,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
+  <!-- SheetJS (xlsx) for universal Excel parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <!-- Google Fonts: Plus Jakarta Sans, Inter, JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -369,6 +372,135 @@
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       saveAs(blob, `Oquv_Markaz_Moliya_CRM_${new Date().toISOString().split('T')[0]}.xlsx`);
+    };
+
+    // =======================================================================
+    // ========================================================================
+    // Universal Excel Import Parser Engine (May, Iyun, Iyul, Avgust)
+    // ========================================================================
+    const parseUzbekMoney = (val) => {
+      if (val === null || val === undefined || val === '') return 0;
+      if (typeof val === 'number') {
+        if (val > 0 && val < 10000) return val * 1000;
+        return val;
+      }
+      let str = String(val).trim().replace(/\s+/g, '');
+      if (str === '-' || str === '--') return 0;
+      const isNegative = str.startsWith('-');
+      str = str.replace(/^-+/, '');
+      
+      // If ends with .000 or ,000 e.g. 650.000 or 75,279.000
+      if (str.endsWith('.000') || str.endsWith(',000')) {
+        str = str.replace(/[.,]000$/, '000');
+        str = str.replace(/[.,]/g, '');
+      } else {
+        str = str.replace(/[.,\s]/g, '');
+      }
+      let num = parseFloat(str) || 0;
+      if (isNegative) num = -num;
+      if (num > 0 && num < 10000) num *= 1000;
+      return num;
+    };
+
+    const parseExcelDateInBrowser = (val, defaultYear = 2026) => {
+      if (val === null || val === undefined || val === '') return null;
+      if (val instanceof Date && !isNaN(val.getTime())) {
+        return val.toISOString().split('T')[0];
+      }
+      if (typeof val === 'number' || (typeof val === 'string' && /^\d{4,6}(\.\d+)?$/.test(val.trim()))) {
+        const serial = typeof val === 'number' ? val : parseFloat(val.trim());
+        const utcDays = Math.floor(serial - 25569);
+        const dateObj = new Date(utcDays * 86400 * 1000);
+        if (!isNaN(dateObj.getTime())) {
+          const y = dateObj.getUTCFullYear();
+          const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+          const d = String(dateObj.getUTCDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+      }
+      const str = String(val).trim();
+      
+      // E.g. '9-Jun', '23-Jun', '18-Jun', '11-Jul', '5-May'
+      const monthNamesShort = {
+        'jan': '01', 'yan': '01',
+        'feb': '02', 'fev': '02',
+        'mar': '03',
+        'apr': '04',
+        'may': '05',
+        'jun': '06', 'iyun': '06',
+        'jul': '07', 'iyul': '07',
+        'aug': '08', 'avg': '08',
+        'sep': '09', 'sen': '09',
+        'oct': '10', 'okt': '10',
+        'nov': '11', 'noy': '11',
+        'dec': '12', 'dek': '12'
+      };
+      const namedMatch = str.match(/^(\d{1,2})[-/ ]([a-zA-Z]{3,4})([-/ ](\d{2,4}))?$/);
+      if (namedMatch) {
+        const d = namedMatch[1].padStart(2, '0');
+        const mName = namedMatch[2].toLowerCase();
+        const m = monthNamesShort[mName] || '06';
+        let y = namedMatch[4] || defaultYear;
+        if (String(y).length === 2) y = '20' + y;
+        return `${y}-${m}-${d}`;
+      }
+
+      // E.g. '11,08,26' or '09.07.26' (DD.MM.YY) or '5/1/2026' (M/D/YYYY)
+      const sepMatch = str.match(/^(\d{1,2})[,./](d{1,2})[,./](d{2,4})/);
+      if (sepMatch) {
+        let [_, p1, p2, p3] = sepMatch;
+        let day = p1;
+        let month = p2;
+        let year = p3;
+        if (year.length === 2) year = '20' + year;
+        if (str.includes('/') && parseInt(p1) <= 12 && parseInt(p3) > 2000) {
+          month = p1.padStart(2, '0');
+          day = p2.padStart(2, '0');
+        } else {
+          day = p1.padStart(2, '0');
+          month = p2.padStart(2, '0');
+        }
+        return `${year}-${month}-${day}`;
+      }
+
+      const parsed = new Date(str);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split('T')[0];
+      }
+      return null;
+    };
+
+    const isNotReceivedText = (text) => {
+      const lower = String(text || '').toLowerCase();
+      return lower.includes('man olmaganman') ||
+             lower.includes('men olmaganman') ||
+             lower.includes('olmaganman') ||
+             lower.includes('olmadim');
+    };
+
+    const mapExpenseCategory = (recipient, desc) => {
+      const text = `${recipient} ${desc}`.toLowerCase();
+      if (text.includes('arenda') || text.includes('ijara') || text.includes('svet') || text.includes('internet') || text.includes('kommunal')) {
+        return 'Kommunal va Ijara';
+      }
+      if (text.includes('target') || text.includes('reklama') || text.includes('smm') || text.includes('marketing')) {
+        return 'Reklama va Target';
+      }
+      if (text.includes('baxora') || text.includes('kuller') || text.includes('pol') || text.includes('suv') || text.includes('markaz')) {
+        return 'Markaz xarajatlari';
+      }
+      if (text.includes('soliq') || text.includes('bank') || text.includes('davlat')) {
+        return 'Boshqa';
+      }
+      return 'Markaz xarajatlari';
+    };
+
+    const mapExpenseType = (recipient) => {
+      const text = String(recipient || '').toLowerCase();
+      if (text.includes('target') || text.includes('reklama')) return 'Marketing';
+      if (text.includes('arenda') || text.includes('svet') || text.includes('internet')) return 'Fixed';
+      if (text.includes('baxora') || text.includes('kuller') || text.includes('suv')) return 'Xojalik';
+      return 'Boshqa';
     };
 
     // SQL Schema for Supabase
@@ -947,6 +1079,16 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       const [monthToDeleteConfirm, setMonthToDeleteConfirm] = useState(null);
       const [historyModalPayment, setHistoryModalPayment] = useState(null);
 
+      // Excel Import State
+      const [isExcelImportModalOpen, setIsExcelImportModalOpen] = useState(false);
+      const [isMonthSelectModalOpen, setIsMonthSelectModalOpen] = useState(false);
+      const [pendingExcelUpload, setPendingExcelUpload] = useState(null);
+      const [selectedUploadMonth, setSelectedUploadMonth] = useState('Avgust 2026');
+      const [replaceExistingData, setReplaceExistingData] = useState(true);
+      const [customMonthInput, setCustomMonthInput] = useState('');
+      const [excelImportSummary, setExcelImportSummary] = useState(null);
+      const [isExcelLoading, setIsExcelLoading] = useState(false);
+
       // Student Modals
       const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
       const [studentForm, setStudentForm] = useState({
@@ -1017,6 +1159,605 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       useEffect(() => {
         localStorage.setItem('edufinance_supabase_cfg', JSON.stringify(supabaseConfig));
       }, [supabaseConfig]);
+
+      // ==========================================
+      // UNIVERSAL EXCEL IMPORT HANDLER (May, Iyun, Iyul, Avgust...)
+      // ======================================
+      // ==========================================
+      // STEP 1: EXCEL FAYL TANLANGANDA OYNI SO'RASH
+      // ==========================================
+      const handleExcelFileSelect = async (event) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        if (!window.XLSX) {
+          alert("XLSX kutubxonasi yuklanmoqda, iltimos sahifani yangilab qayta urinib ko'ring.");
+          return;
+        }
+
+        setIsExcelLoading(true);
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const workbook = window.XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+          const sheetNames = workbook.SheetNames;
+
+          // Fayl nomi yoki listlardan taxminiy oyni aniqlash
+          let predictedMonth = selectedMonth;
+          const fileNameLower = file.name.toLowerCase();
+          const uzMonthsList = [
+            { key: 'may', name: 'May 2026' },
+            { key: 'iyun', name: 'Iyun 2026' },
+            { key: 'iyul', name: 'Iyul 2026' },
+            { key: 'avgust', name: 'Avgust 2026' },
+            { key: 'sentyabr', name: 'Sentyabr 2026' },
+            { key: 'oktabr', name: 'Oktabr 2026' },
+            { key: 'noyabr', name: 'Noyabr 2026' },
+            { key: 'dekabr', name: 'Dekabr 2026' },
+            { key: 'yanvar', name: 'Yanvar 2026' },
+            { key: 'fevral', name: 'Fevral 2026' },
+            { key: 'mart', name: 'Mart 2026' },
+            { key: 'aprel', name: 'Aprel 2026' }
+          ];
+
+          for (const m of uzMonthsList) {
+            if (fileNameLower.includes(m.key) || sheetNames.some(s => s.toLowerCase().includes(m.key))) {
+              predictedMonth = m.name;
+              break;
+            }
+          }
+
+          setSelectedUploadMonth(predictedMonth);
+          setPendingExcelUpload({
+            file,
+            workbook,
+            sheetNames,
+            fileName: file.name
+          });
+          setIsMonthSelectModalOpen(true);
+        } catch (err) {
+          console.error("Excel faylni o'qishda xatolik:", err);
+          alert("Excel faylni ochishda xatolik: " + err.message);
+        } finally {
+          setIsExcelLoading(false);
+          event.target.value = '';
+        }
+      };
+
+      // ==========================================
+      // STEP 2: OY TANLANGANDAN SO'NG BARCHA FORMATLARNI PARSLASH
+      // (Avgust, Iyul, Iyun, May 4 xil strukturasiga 100% mos)
+      // ==========================================
+      const executeExcelImportWithMonth = () => {
+        if (!pendingExcelUpload) return;
+        const targetMonth = (customMonthInput && customMonthInput.trim()) ? customMonthInput.trim() : selectedUploadMonth;
+        const { workbook, sheetNames, fileName } = pendingExcelUpload;
+
+        setIsMonthSelectModalOpen(false);
+        setIsExcelLoading(true);
+
+        try {
+          // Listlarni aniqlash
+          let paymentsSheet = null;
+          let expensesSheet = null;
+          let kitchenSheet = null;
+          let clickSheet = null;
+
+          sheetNames.forEach(name => {
+            const lower = name.toLowerCase();
+            if (lower.includes('oshxona') || lower.includes('obed') || lower.includes('ovqat')) {
+              kitchenSheet = workbook.Sheets[name];
+            } else if (lower.includes('clisk') || lower.includes('click')) {
+              clickSheet = workbook.Sheets[name];
+            } else if (lower.includes('xarajat') || lower.includes('chiqim') || lower.includes('rasxod') || lower.includes('maosh')) {
+              expensesSheet = workbook.Sheets[name];
+            } else if (lower.includes("to'lov") || lower.includes('tolov') || lower.includes('kirim') || lower.includes('student') || lower.includes('may') || lower.includes('iyun') || lower.includes('iyul') || lower.includes('avgust')) {
+              if (!paymentsSheet) paymentsSheet = workbook.Sheets[name];
+            }
+          });
+
+          if (!paymentsSheet && sheetNames.length > 0) paymentsSheet = workbook.Sheets[sheetNames[0]];
+          if (!expensesSheet && sheetNames.length > 1) expensesSheet = workbook.Sheets[sheetNames[1]];
+          if (!kitchenSheet && sheetNames.length > 2) kitchenSheet = workbook.Sheets[sheetNames[2]];
+
+          let newPaymentsCount = 0;
+          let newStudentsCount = 0;
+          let newExpensesCount = 0;
+          let newStaffCount = 0;
+          let totalImportedIncome = 0;
+          let totalImportedExpense = 0;
+          let debtorsCount = 0;
+          let manOlmaganmanCount = 0;
+
+          const updatedStudents = [...students];
+          const updatedGroups = [...groups];
+          const updatedStaff = [...staff];
+          
+          // Agar replaceExistingData bo'lsa, ushbu oydagi to'lov va xarajatlarni tozalab yangitdan yuklaymiz
+          let updatedPayments = replaceExistingData 
+            ? payments.filter(p => p.month !== targetMonth) 
+            : [...payments];
+          let updatedExpenses = replaceExistingData 
+            ? expenses.filter(e => e.month !== targetMonth) 
+            : [...expenses];
+
+          const updatedMonths = months.includes(targetMonth) ? [...months] : [...months, targetMonth];
+
+          // A) Oshxona ma'lumotlarini o'qish (Ustozlar tushligi)
+          const kitchenTotals = {};
+          if (kitchenSheet) {
+            const kRows = window.XLSX.utils.sheet_to_json(kitchenSheet, { header: 1, raw: false });
+            let kHeader = -1;
+            for (let r = 0; r < Math.min(kRows.length, 6); r++) {
+              if (kRows[r] && kRows[r].some(c => String(c).trim() === '1' || String(c).trim() === '01')) {
+                kHeader = r;
+                break;
+              }
+            }
+            const kStart = kHeader >= 0 ? kHeader + 1 : 1;
+            for (let i = kStart; i < kRows.length; i++) {
+              const row = kRows[i];
+              if (!row || !row[0]) continue;
+              const fio = String(row[0]).trim();
+              if (fio.toLowerCase().startsWith('jami') || fio.toLowerCase().startsWith('total')) continue;
+              let jamiK = 0;
+              for (let d = 1; d <= 31; d++) {
+                const cell = row[d];
+                if (cell && String(cell).toUpperCase() !== 'X' && String(cell).toUpperCase() !== 'Х') {
+                  jamiK += parseUzbekMoney(cell);
+                }
+              }
+              const explicitJ = parseUzbekMoney(row[32] || row[row.length - 1]);
+              kitchenTotals[fio.toLowerCase()] = explicitJ > 0 ? explicitJ : jamiK;
+            }
+          }
+
+          // B) Kirim moduli: To'lovlar va O'quvchilarni o'qish (4 xil format tahlili)
+          if (paymentsSheet) {
+            const pRows = window.XLSX.utils.sheet_to_json(paymentsSheet, { header: 1, raw: false });
+            
+            // 1. Formatni aniqlash
+            let isMayFormat = false;
+            let headerRowIdx = -1;
+
+            for (let r = 0; r < Math.min(pRows.length, 10); r++) {
+              const row = pRows[r] || [];
+              const rowStr = row.map(c => String(c || '').toLowerCase()).join(' ');
+              if (rowStr.includes("to'lov qilingan sana") || (rowStr.includes("o'quvchilar i.f.o") && rowStr.includes("to'lov turi"))) {
+                isMayFormat = true;
+                headerRowIdx = r;
+                break;
+              }
+              if (rowStr.includes('i.f.o') || rowStr.includes('f.i.o') || rowStr.includes('o‘quvchi') || rowStr.includes('oquvchi')) {
+                headerRowIdx = r;
+                break;
+              }
+            }
+
+            const pStart = headerRowIdx >= 0 ? headerRowIdx + 1 : 1;
+
+            if (isMayFormat) {
+              // --- FORMAT 4: MAY OYI STRUKTURASI ---
+              // Col A: Sana, Col B: I.F.O, Col C: May oyi uchun, Col D: Iyun oyi uchun, Col E: To'lov turi (Naqd / Click)
+              for (let i = pStart; i < pRows.length; i++) {
+                const row = pRows[i];
+                if (!row || row.length === 0) continue;
+                const name = String(row[1] || '').trim();
+                if (!name || name.toLowerCase().startsWith('jami') || name.toLowerCase().startsWith('total')) continue;
+
+                const dateStr = parseExcelDateInBrowser(row[0]) || getTodayInputFormat();
+                const sumMay = parseUzbekMoney(row[2]);
+                const sumIyun = parseUzbekMoney(row[3]);
+                const paySum = sumMay > 0 ? sumMay : (sumIyun > 0 ? sumIyun : 0);
+                const payTypeStr = String(row[4] || '').toLowerCase();
+
+                const isClick = payTypeStr.includes('click') || payTypeStr.includes('clisk');
+                const naqd = isClick ? 0 : paySum;
+                const click = isClick ? paySum : 0;
+                const oylikTolov = paySum > 0 ? paySum : 750000;
+
+                let existingStudent = updatedStudents.find(s => s.name.toLowerCase() === name.toLowerCase());
+                if (!existingStudent) {
+                  existingStudent = {
+                    id: generateStudentId(),
+                    name,
+                    phone: '+998 ',
+                    parentPhone: '+998 ',
+                    group: 'Asosiy guruh',
+                    monthlyFee: oylikTolov,
+                    status: 'active',
+                    joinedDate: dateStr
+                  };
+                  updatedStudents.push(existingStudent);
+                  newStudentsCount++;
+                }
+
+                totalImportedIncome += paySum;
+
+                updatedPayments.push({
+                  id: 'PAY-' + Math.floor(1000 + Math.random() * 9000),
+                  studentId: existingStudent.id,
+                  studentName: name,
+                  phoneStudent: '+998 ',
+                  phoneParent: '+998 ',
+                  oylikTolov,
+                  naqd,
+                  click,
+                  group: 'Asosiy guruh',
+                  paymentDate: dateStr,
+                  month: targetMonth,
+                  paymentType: isClick ? 'Click' : 'Naqd',
+                  note: payTypeStr ? `To'lov turi: ${row[4]}` : '',
+                  is3MonthPayment: false,
+                  bittaToliqSumma: 0,
+                  depozitBalansi: 0,
+                  isPrepaid: false
+                });
+                newPaymentsCount++;
+              }
+            } else {
+              // --- FORMAT 1, 2, 3: AVGUST, IYUL, IYUN STRUKTURALARI ---
+              // Ustunlar joylashuvini dinamik aniqlash
+              const hRow = pRows[headerRowIdx] || [];
+              const subHRow = pRows[headerRowIdx + 1] || [];
+              
+              let colName = 0;
+              let colParentPhone = -1;
+              let colStudentPhone = -1;
+              let colOylik = -1;
+              let colNaxt = -1;
+              let colClick = -1;
+              let colQoldiq = -1;
+              let colDate1 = -1;
+              let colDate2 = -1;
+              let colGroup = -1;
+
+              // Qidirish
+              for (let c = 0; c < 15; c++) {
+                const hText = `${hRow[c] || ''} ${subHRow[c] || ''}`.toLowerCase();
+                if (hText.includes('oilasiniki') || hText.includes('oila')) colParentPhone = c;
+                else if (hText.includes("o'ziniki") || hText.includes('oziniki')) colStudentPhone = c;
+                else if (hText.includes("oylik to'lov") || hText.includes('oylik tolov')) colOylik = c;
+                else if (hText.includes('naxt') || hText.includes('naqd')) colNaxt = c;
+                else if (hText.includes('clisk') || hText.includes('click')) colClick = c;
+                else if (hText.includes('qoldiq')) colQoldiq = c;
+                else if (hText.includes('1 to') || (hText.includes('sana') && colDate1 === -1)) colDate1 = c;
+                else if (hText.includes('2 to')) colDate2 = c;
+                else if (hText.includes('yo‘nalish') || hText.includes('yonalish') || hText.includes('guruh') || hText.includes('gurux')) colGroup = c;
+              }
+
+              // Fallback agar sarlavhalardan topilmasa (Avgust vs Iyul/Iyun farqi)
+              if (colParentPhone !== -1) {
+                // Avgust format (Telefon ustunlari bor)
+                if (colOylik === -1) colOylik = 3;
+                if (colNaxt === -1) colNaxt = 4;
+                if (colClick === -1) colClick = 5;
+                if (colQoldiq === -1) colQoldiq = 6;
+                if (colDate1 === -1) colDate1 = 7;
+                if (colDate2 === -1) colDate2 = 8;
+                if (colGroup === -1) colGroup = 9;
+              } else {
+                // Iyul va Iyun format (Telefon ustunlari yo'q)
+                if (colOylik === -1) colOylik = 1;
+                if (colNaxt === -1) colNaxt = 2;
+                if (colClick === -1) colClick = 3;
+                if (colQoldiq === -1) colQoldiq = 4;
+                if (colGroup === -1) colGroup = 5;
+                if (colDate1 === -1) colDate1 = 6;
+              }
+
+              const rowDataStart = (subHRow.some(c => String(c).toLowerCase().includes('naxt') || String(c).toLowerCase().includes('clisk'))) 
+                ? headerRowIdx + 2 
+                : headerRowIdx + 1;
+
+              for (let i = rowDataStart; i < pRows.length; i++) {
+                const row = pRows[i];
+                if (!row || row.length === 0) continue;
+
+                const name = String(row[colName] || '').trim();
+                if (!name || name.toLowerCase().startsWith('jami') || name.toLowerCase().startsWith('total') || name.toLowerCase().startsWith('hisobot') || name.toLowerCase().startsWith('olingan')) {
+                  continue;
+                }
+
+                const rowFullText = row.map(c => String(c || '')).join(' ');
+                const manOlmaganman = isNotReceivedText(rowFullText);
+
+                const parentPhone = (colParentPhone !== -1 && row[colParentPhone] && String(row[colParentPhone]).trim() !== '-') 
+                  ? String(row[colParentPhone]).trim() 
+                  : '+998 ';
+                const studentPhone = (colStudentPhone !== -1 && row[colStudentPhone] && String(row[colStudentPhone]).trim() !== '-') 
+                  ? String(row[colStudentPhone]).trim() 
+                  : '+998 ';
+
+                const rawOylik = parseUzbekMoney(row[colOylik]);
+                let oylikTolov = rawOylik > 0 ? rawOylik : 750000;
+
+                let naqd = parseUzbekMoney(row[colNaxt]);
+                let click = parseUzbekMoney(row[colClick]);
+
+                if (manOlmaganman) {
+                  naqd = 0;
+                  click = 0;
+                  manOlmaganmanCount++;
+                }
+
+                // Guruh
+                let guruh = (colGroup !== -1 && row[colGroup]) ? String(row[colGroup]).trim() : '';
+                if (!guruh || guruh === '-' || /^\d+$/.test(guruh)) {
+                  const grpMatch = rowFullText.match(/(AI-\d+|AI\s*-\s*\d+|python-\d+|java\s*\d+|fullstack-\d+|fullstack\d+|frontend-\d+|backend-\d+|foundation\s*-\d+)/i);
+                  guruh = grpMatch ? grpMatch[0] : 'Asosiy guruh';
+                }
+
+                // Izohlar va sana
+                let rawDate1 = colDate1 !== -1 ? row[colDate1] : '';
+                let rawDate2 = colDate2 !== -1 ? row[colDate2] : '';
+                let izoh = '';
+
+                // Izohlarni topish ("Elnurga bergan", "Jasminaga tashagan", "3 oylik qilgan", "50 joy...")
+                [rawDate1, rawDate2, row[10], row[11], row[12], row[19], row[20]].forEach(cell => {
+                  if (cell) {
+                    const strCell = String(cell).trim();
+                    if (strCell && !strCell.match(/^\d+[,./-]\d+/) && isNaN(parseUzbekMoney(strCell)) && strCell.length > 3) {
+                      if (!izoh) izoh = strCell;
+                      else if (!izoh.includes(strCell)) izoh += `, ${strCell}`;
+                    }
+                  }
+                });
+
+                if (manOlmaganman) izoh = izoh ? izoh + " (Man olmaganman)" : "Man olmaganman";
+
+                const dateVal = parseExcelDateInBrowser(rawDate1) || parseExcelDateInBrowser(rawDate2) || getTodayInputFormat();
+
+                // 3 Oylik tekshiruvi (masalan Luqmonov Kamron 1,900.000 to'lagan, -1,250.000 qoldiq)
+                const is3Month = (naqd + click >= oylikTolov * 2) || rowFullText.toLowerCase().includes('3 oylik');
+
+                // Studentni saqlash / yangilash
+                let existingStudent = updatedStudents.find(s => s.name.toLowerCase() === name.toLowerCase());
+                if (!existingStudent) {
+                  existingStudent = {
+                    id: generateStudentId(),
+                    name,
+                    phone: studentPhone,
+                    parentPhone: parentPhone,
+                    group: guruh,
+                    monthlyFee: oylikTolov,
+                    status: 'active',
+                    joinedDate: dateVal
+                  };
+                  updatedStudents.push(existingStudent);
+                  newStudentsCount++;
+                }
+
+                // Guruhni tekshirish
+                if (!updatedGroups.some(g => g.name.toLowerCase() === guruh.toLowerCase())) {
+                  updatedGroups.push({
+                    id: 'GRP-' + Math.floor(1000 + Math.random() * 9000),
+                    name: guruh,
+                    category: 'Dasturlash',
+                    fee: oylikTolov,
+                    teacher: 'Asosiy Ustoz',
+                    days: 'Dush-Chor-Jum (14:00)',
+                    room: '1-Xona'
+                  });
+                }
+
+                const totalPaid = naqd + click;
+                let paymentType = 'Kutilmoqda';
+                if (is3Month) paymentType = '3 Oylik (To\'liq)';
+                else if (naqd > 0 && click > 0) paymentType = 'Click + Naqd';
+                else if (click > 0) paymentType = 'Click';
+                else if (naqd > 0) paymentType = 'Naqd';
+
+                if (totalPaid < oylikTolov) {
+                  debtorsCount++;
+                }
+
+                totalImportedIncome += totalPaid;
+
+                updatedPayments.push({
+                  id: 'PAY-' + Math.floor(1000 + Math.random() * 9000),
+                  studentId: existingStudent.id,
+                  studentName: name,
+                  phoneStudent: studentPhone,
+                  phoneParent: parentPhone,
+                  oylikTolov,
+                  naqd,
+                  click,
+                  group: guruh,
+                  paymentDate: dateVal,
+                  month: targetMonth,
+                  paymentType,
+                  note: izoh,
+                  is3MonthPayment: is3Month,
+                  bittaToliqSumma: is3Month ? totalPaid : 0,
+                  depozitBalansi: is3Month ? Math.max(0, totalPaid - oylikTolov) : 0,
+                  isPrepaid: false
+                });
+                newPaymentsCount++;
+              }
+            }
+          }
+
+          // C) Chiqim moduli: Xodimlar va Markaz xarajatlari
+          if (expensesSheet) {
+            const eRows = window.XLSX.utils.sheet_to_json(expensesSheet, { header: 1, raw: false });
+            let currentSec = 'UNKNOWN';
+
+            for (let i = 0; i < eRows.length; i++) {
+              const row = eRows[i];
+              if (!row || row.length === 0) continue;
+              const rText = row.map(c => String(c || '')).join(' ').toLowerCase();
+
+              if (rText.includes('xodim') || rText.includes('maosh') || rText.includes('oyligi') || rText.includes('ulush')) {
+                currentSec = 'STAFF';
+                continue;
+              }
+              if (rText.includes('markaz xarajat') || rText.includes('rasxod') || rText.includes('arenda') || rText.includes('svet')) {
+                currentSec = 'CENTER';
+                continue;
+              }
+
+              const firstCol = String(row[0] || '').trim();
+              if (!firstCol || firstCol.toLowerCase().startsWith('jami') || firstCol.toLowerCase().startsWith('total')) continue;
+
+              const dateP = parseExcelDateInBrowser(row[0]);
+              const isCenterRow = dateP !== null ||
+                rText.includes('target') || rText.includes('svet') || rText.includes('internet') ||
+                rText.includes('kuller') || rText.includes('arenda') || rText.includes('soliq') ||
+                rText.includes('baxora') || currentSec === 'CENTER';
+
+              if (isCenterRow && (dateP !== null || parseUzbekMoney(row[3]) > 0 || parseUzbekMoney(row[4]) > 0 || parseUzbekMoney(row[5]) > 0)) {
+                // MARKAZ XARAJATI
+                const sana = dateP || parseExcelDateInBrowser(row[1]) || getTodayInputFormat();
+                const kimga = String(row[1] || row[0] || 'Markaz xarajati').trim();
+                const izox = String(row[2] || '').trim();
+                const naqdExp = parseUzbekMoney(row[4] || row[3]);
+                const clickExp = parseUzbekMoney(row[5] || row[4]);
+
+                if (naqdExp > 0) {
+                  updatedExpenses.push({
+                    id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                    category: mapExpenseCategory(kimga, izox),
+                    description: `${kimga} - ${izox} (Naqd)`,
+                    amount: naqdExp,
+                    recipient: kimga,
+                    date: sana,
+                    month: targetMonth,
+                    type: mapExpenseType(kimga)
+                  });
+                  totalImportedExpense += naqdExp;
+                  newExpensesCount++;
+                }
+                if (clickExp > 0) {
+                  updatedExpenses.push({
+                    id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                    category: mapExpenseCategory(kimga, izox),
+                    description: `${kimga} - ${izox} (Click)`,
+                    amount: clickExp,
+                    recipient: kimga,
+                    date: sana,
+                    month: targetMonth,
+                    type: mapExpenseType(kimga)
+                  });
+                  totalImportedExpense += clickExp;
+                  newExpensesCount++;
+                }
+              } else {
+                // XODIMLAR MAOSHI
+                const fio = firstCol;
+                const oyligi = parseUzbekMoney(row[1]);
+                let ulush = 0;
+                if (row[2] !== undefined && row[2] !== null) {
+                  const strT = String(row[2]).trim();
+                  if (strT.includes('%')) ulush = parseFloat(strT) / 100;
+                  else ulush = parseFloat(strT) || 0;
+                }
+                const avans = parseUzbekMoney(row[3]);
+                const oldingiQarz = parseUzbekMoney(row[4]);
+                let oshxona = parseUzbekMoney(row[6]);
+                if (oshxona === 0 && kitchenTotals[fio.toLowerCase()]) {
+                  oshxona = kitchenTotals[fio.toLowerCase()];
+                }
+
+                // Yakuniy Jami = Oyligi + oldingi oy qarzi - berilgan Avans - Oshxona
+                const yakuniyJami = Math.max(0, oyligi + oldingiQarz - avans - oshxona);
+
+                if (yakuniyJami > 0) {
+                  updatedExpenses.push({
+                    id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                    category: fio.toLowerCase().includes('direktor') || fio.toLowerCase().includes('admin') ? 'Xodimlar oyligi' : 'Oqituvchilar oyligi',
+                    description: `${fio} (Oylik: ${formatMoney(oyligi)}, Avans: -${formatMoney(avans)}, Oshxona: -${formatMoney(oshxona)})`,
+                    amount: yakuniyJami,
+                    recipient: fio,
+                    date: getTodayInputFormat(),
+                    month: targetMonth,
+                    type: 'Kadrlar'
+                  });
+                  totalImportedExpense += yakuniyJami;
+                  newExpensesCount++;
+                }
+
+                if (!updatedStaff.some(s => s.name.toLowerCase() === fio.toLowerCase())) {
+                  updatedStaff.push({
+                    id: 'STF-' + Math.floor(100 + Math.random() * 900),
+                    name: fio,
+                    phone: '+998 ',
+                    role: fio.toLowerCase().includes('direktor') ? 'staff' : 'teacher',
+                    position: fio.toLowerCase().includes('direktor') ? 'Direktor' : 'Ustoz',
+                    percent: Math.round(ulush * 100) || 40,
+                    fixedSalary: oyligi,
+                    joinedDate: getTodayInputFormat(),
+                    status: 'active'
+                  });
+                  newStaffCount++;
+                }
+              }
+            }
+          }
+
+          // D) Click daftari: qo'shimcha tushum va chiqimlar
+          if (clickSheet) {
+            const clkRows = window.XLSX.utils.sheet_to_json(clickSheet, { header: 1, raw: false });
+            for (let i = 0; i < clkRows.length; i++) {
+              const row = clkRows[i];
+              if (!row || row.length === 0) continue;
+              const rText = row.map(c => String(c || '')).join(' ').toLowerCase();
+              if (rText.includes('no') && rText.includes('summa')) continue;
+
+              const chiqimSumma = parseUzbekMoney(row[6]);
+              const chiqimIzox = String(row[7] || row[6] || '').trim();
+              if (chiqimSumma > 0 || (chiqimIzox && (chiqimIzox.includes('arenda') || chiqimIzox.includes('soliq')))) {
+                const amount = chiqimSumma > 0 ? chiqimSumma : parseUzbekMoney(row[7]);
+                if (amount > 0) {
+                  updatedExpenses.push({
+                    id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                    category: chiqimIzox.includes('arenda') ? 'Kommunal va Ijara' : 'Boshqa',
+                    description: `Click yechib olish: ${chiqimIzox}`,
+                    amount: amount,
+                    recipient: 'Click Kassa',
+                    date: getTodayInputFormat(),
+                    month: targetMonth,
+                    type: 'Fixed'
+                  });
+                  totalImportedExpense += amount;
+                  newExpensesCount++;
+                }
+              }
+            }
+          }
+
+          setStudents(updatedStudents);
+          setGroups(updatedGroups);
+          setStaff(updatedStaff);
+          setPayments(updatedPayments);
+          setExpenses(updatedExpenses);
+          setMonths(updatedMonths);
+          setSelectedMonth(targetMonth);
+
+          const summaryObj = {
+            fileName,
+            month: targetMonth,
+            paymentsCount: newPaymentsCount,
+            studentsCount: newStudentsCount,
+            expensesCount: newExpensesCount,
+            staffCount: newStaffCount,
+            totalIncome: totalImportedIncome,
+            totalExpense: totalImportedExpense,
+            debtorsCount,
+            manOlmaganmanCount,
+            netProfit: totalImportedIncome - totalImportedExpense
+          };
+
+          setExcelImportSummary(summaryObj);
+          setIsExcelImportModalOpen(true);
+          showToast(`"${fileName}" fayli ${targetMonth} oyiga muvaffaqiyatli yuklandi! 📊✅`);
+        } catch (err) {
+          console.error("Excel import xatosi:", err);
+          alert("Excel faylni o'qishda xatolik yuz berdi: " + err.message);
+        } finally {
+          setIsExcelLoading(false);
+          setPendingExcelUpload(null);
+        }
+      };
 
       // Supabase Push (Upload All Data to Supabase)
       const handleSyncToSupabase = async (opts = {}) => {
@@ -2436,6 +3177,21 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               >
                 <span>👔</span> + Xodim
               </button>
+
+              {/* Excel Import (Yuklash) */}
+              <label
+                className={`px-3.5 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 hover:border-emerald-500/60 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/10 ${isExcelLoading ? 'opacity-50 pointer-events-none animate-pulse' : ''}`}
+                title="Excel hisobot faylini yuklash (.xlsx, .xls) - to'lovlar, xarajatlar, oshxona va o'quvchilarni to'liq o'qib bazaga qo'shadi"
+              >
+                <span>{isExcelLoading ? '⏳' : '📤'}</span>
+                <span>{isExcelLoading ? 'Yuklanmoqda...' : 'Excel Yuklash'}</span>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleExcelFileSelect}
+                  className="hidden"
+                />
+              </label>
 
               {/* Excel Export */}
               <button
@@ -5633,6 +6389,203 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* ===== EXCEL IMPORT SUMMARY MODAL ===== */}
+          {isExcelImportModalOpen && excelImportSummary && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+              <div className="w-full max-w-lg rounded-3xl bg-slate-900 border border-emerald-500/30 p-6 shadow-2xl shadow-emerald-500/10 space-y-5">
+                <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-xl">
+                      📊
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                        <span>Excel Muvaffaqiyatli Yuklandi!</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold">
+                          {excelImportSummary.month}
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-400">Fayl: {excelImportSummary.fileName}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsExcelImportModalOpen(false)}
+                    className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                    <div className="text-[11px] text-slate-400 font-medium">💳 Yangi To'lovlar</div>
+                    <div className="text-lg font-extrabold text-emerald-400 mt-0.5">
+                      {excelImportSummary.paymentsCount} ta
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                      Jami: {formatMoney(excelImportSummary.totalIncome)}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                    <div className="text-[11px] text-slate-400 font-medium">💸 Yangi Xarajatlar</div>
+                    <div className="text-lg font-extrabold text-rose-400 mt-0.5">
+                      {excelImportSummary.expensesCount} ta
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                      Jami: {formatMoney(excelImportSummary.totalExpense)}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                    <div className="text-[11px] text-slate-400 font-medium">👥 Yangi O'quvchilar</div>
+                    <div className="text-lg font-extrabold text-indigo-400 mt-0.5">
+                      {excelImportSummary.studentsCount} ta
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      Bazaga saqlandi
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                    <div className="text-[11px] text-slate-400 font-medium">⚠️ Qarzdorlar</div>
+                    <div className="text-lg font-extrabold text-amber-400 mt-0.5">
+                      {excelImportSummary.debtorsCount} ta
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      {excelImportSummary.manOlmaganmanCount > 0 ? `${excelImportSummary.manOlmaganmanCount} ta "Man olmaganman"` : "Qoldig'i borlar"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+                  <div>
+                    <div className="text-[11px] text-emerald-300/80 font-bold uppercase tracking-wider">Hisoblangan Sof Foyda</div>
+                    <div className="text-xl font-extrabold font-mono text-emerald-400 mt-0.5">
+                      {formatMoney(excelImportSummary.netProfit)}
+                    </div>
+                  </div>
+                  <div className="text-xs px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 font-bold font-mono">
+                    {excelImportSummary.month}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setIsExcelImportModalOpen(false)}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                  >
+                    Ko'rish va Davom ettirish ✅
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+
+          
+          {/* ===== OYNI TANLASH VA TASDIQLASH MODALI ===== */}
+          {isMonthSelectModalOpen && pendingExcelUpload && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-lg animate-fade-in">
+              <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-emerald-500/40 p-6 shadow-2xl shadow-emerald-500/20 space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-xl">
+                      📅
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-white">Qaysi oyning ma'lumotlari?</h3>
+                      <p className="text-[11px] text-slate-400 truncate max-w-[240px]">
+                        Fayl: <span className="text-emerald-300 font-mono">{pendingExcelUpload.fileName}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setIsMonthSelectModalOpen(false); setPendingExcelUpload(null); }}
+                    className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs text-slate-300 font-semibold">
+                    Hisobot Oyi (Tanlang yoki yangi kiriting):
+                  </label>
+                  
+                  {/* Tezkor tanlash tugmalari */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {['May 2026', 'Iyun 2026', 'Iyul 2026', 'Avgust 2026', 'Sentyabr 2026', 'Oktabr 2026'].map(m => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => { setSelectedUploadMonth(m); setCustomMonthInput(''); }}
+                        className={`px-2.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                          selectedUploadMonth === m && !customMonthInput
+                            ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/30'
+                            : 'bg-slate-950/60 hover:bg-slate-800/80 text-slate-300 border-white/[0.08]'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Yangi yoki boshqa oy yozish */}
+                  <div className="pt-2">
+                    <input
+                      type="text"
+                      placeholder="Yoki boshqa oy nomini yozing (masalan: Noyabr 2026)..."
+                      value={customMonthInput}
+                      onChange={e => setCustomMonthInput(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950/80 text-xs text-white border border-white/[0.1] focus:outline-none focus:border-emerald-500 placeholder:text-slate-500 font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Listlar haqida qisqacha ma'lumot */}
+                <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06] space-y-1">
+                  <div className="text-[11px] text-slate-400 font-medium">📑 Fayldagi listlar:</div>
+                  <div className="text-xs text-emerald-400 font-mono font-semibold">
+                    {pendingExcelUpload.sheetNames.join(' • ')}
+                  </div>
+                </div>
+
+                {/* Yangilash yoki qo'shish rejimi */}
+                <label className="flex items-start gap-2.5 cursor-pointer p-2 rounded-xl hover:bg-white/[0.02]">
+                  <input
+                    type="checkbox"
+                    checked={replaceExistingData}
+                    onChange={e => setReplaceExistingData(e.target.checked)}
+                    className="mt-0.5 rounded accent-emerald-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] text-slate-300 leading-tight">
+                    <strong>Mavjud oydagi ma'lumotlarni tozalab yangitdan yuklash</strong> (Tavsiya etiladi: to'lovlar va xarajatlar takrorlanmasligi uchun)
+                  </span>
+                </label>
+
+                {/* Tugmalar */}
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setIsMonthSelectModalOpen(false); setPendingExcelUpload(null); }}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Bekor qilish
+                  </button>
+                  <button
+                    type="button"
+                    onClick={executeExcelImportWithMonth}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>🚀</span>
+                    <span>Yuklash va Hisoblash</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
