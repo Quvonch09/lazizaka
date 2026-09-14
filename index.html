@@ -446,7 +446,7 @@
       }
 
       // E.g. '11,08,26' or '09.07.26' (DD.MM.YY) or '5/1/2026' (M/D/YYYY)
-      const sepMatch = str.match(/^(\d{1,2})[,./](d{1,2})[,./](d{2,4})/);
+      const sepMatch = str.match(/^(\d{1,2})[,./](\d{1,2})[,./](\d{2,4})/);
       if (sepMatch) {
         let [_, p1, p2, p3] = sepMatch;
         let day = p1;
@@ -468,6 +468,38 @@
         return parsed.toISOString().split('T')[0];
       }
       return null;
+    };
+
+    const normalizeName = (name) => {
+      if (!name) return '';
+      return String(name)
+        .toLowerCase()
+        .replace(/[`'ʻ’ʼ]/g, "'")
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    const formatProperName = (name) => {
+      if (!name) return '';
+      return String(name).trim().split(/\s+/).map(word => {
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      }).join(' ');
+    };
+
+    const cleanGroupName = (raw) => {
+      if (!raw) return 'Asosiy guruh';
+      let s = String(raw).trim();
+      const m = s.match(/^(ai|python|fullstack|frontend|backend|java|foundation|dasturlash)[\s\-_]*0*(\d+)$/i);
+      if (m) {
+        const prefix = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
+        const num = parseInt(m[2], 10);
+        if (prefix.toLowerCase() === 'ai') return 'AI-' + num;
+        return prefix + '-' + num;
+      }
+      if (s.length > 2 && s.length < 25 && !/(xarajat|founder|olinishi|berdim|jami|hisobot|qoldiq|naqd|click|oylik)/i.test(s)) {
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      }
+      return 'Asosiy guruh';
     };
 
     const isNotReceivedText = (text) => {
@@ -1225,7 +1257,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
       // ==========================================
       // STEP 2: OY TANLANGANDAN SO'NG BARCHA FORMATLARNI PARSLASH
-      // (Avgust, Iyul, Iyun, May 4 xil strukturasiga 100% mos)
+      // (Avgust, Iyul, Iyun, May 4 xil strukturasiga 100% mos va Dublikatsiyaga qarshi)
       // ==========================================
       const executeExcelImportWithMonth = () => {
         if (!pendingExcelUpload) return;
@@ -1237,30 +1269,31 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
         try {
           // Listlarni aniqlash
-          let paymentsSheet = null;
-          let expensesSheet = null;
-          let kitchenSheet = null;
-          let clickSheet = null;
-
-          sheetNames.forEach(name => {
-            const lower = name.toLowerCase();
-            if (lower.includes('oshxona') || lower.includes('obed') || lower.includes('ovqat')) {
-              kitchenSheet = workbook.Sheets[name];
-            } else if (lower.includes('clisk') || lower.includes('click')) {
-              clickSheet = workbook.Sheets[name];
-            } else if (lower.includes('xarajat') || lower.includes('chiqim') || lower.includes('rasxod') || lower.includes('maosh')) {
-              expensesSheet = workbook.Sheets[name];
-            } else if (lower.includes("to'lov") || lower.includes('tolov') || lower.includes('kirim') || lower.includes('student') || lower.includes('may') || lower.includes('iyun') || lower.includes('iyul') || lower.includes('avgust')) {
-              if (!paymentsSheet) paymentsSheet = workbook.Sheets[name];
-            }
+          const paySheetName = sheetNames.find(s => {
+            const l = s.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
+            return l.includes("to'lov") || l.includes('tolov') || l.includes('may');
+          });
+          const expSheetName = sheetNames.find(s => {
+            const l = s.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
+            return l.includes('xarajat') || l.includes('rasxod') || l.includes('chiqim');
+          });
+          const kitSheetName = sheetNames.find(s => {
+            const l = s.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
+            return l.includes('oshxona') || l.includes('obed');
+          });
+          const clkSheetName = sheetNames.find(s => {
+            const l = s.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
+            return l.includes('clisk') || l.includes('click');
           });
 
-          if (!paymentsSheet && sheetNames.length > 0) paymentsSheet = workbook.Sheets[sheetNames[0]];
-          if (!expensesSheet && sheetNames.length > 1) expensesSheet = workbook.Sheets[sheetNames[1]];
-          if (!kitchenSheet && sheetNames.length > 2) kitchenSheet = workbook.Sheets[sheetNames[2]];
+          const paymentsSheet = paySheetName ? workbook.Sheets[paySheetName] : (sheetNames[0] ? workbook.Sheets[sheetNames[0]] : null);
+          const expensesSheet = expSheetName ? workbook.Sheets[expSheetName] : (sheetNames[1] ? workbook.Sheets[sheetNames[1]] : null);
+          const kitchenSheet = kitSheetName ? workbook.Sheets[kitSheetName] : null;
+          const clickSheet = clkSheetName ? workbook.Sheets[clkSheetName] : null;
 
           let newPaymentsCount = 0;
           let newStudentsCount = 0;
+          let matchedStudentsCount = 0;
           let newExpensesCount = 0;
           let newStaffCount = 0;
           let totalImportedIncome = 0;
@@ -1271,8 +1304,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           const updatedStudents = [...students];
           const updatedGroups = [...groups];
           const updatedStaff = [...staff];
-          
-          // Agar replaceExistingData bo'lsa, ushbu oydagi to'lov va xarajatlarni tozalab yangitdan yuklaymiz
+
+          // Agar replaceExistingData tanlangan bo'lsa, ushbu oydagi to'lov va xarajatlarni tozalaymiz
           let updatedPayments = replaceExistingData 
             ? payments.filter(p => p.month !== targetMonth) 
             : [...payments];
@@ -1307,27 +1340,27 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 }
               }
               const explicitJ = parseUzbekMoney(row[32] || row[row.length - 1]);
-              kitchenTotals[fio.toLowerCase()] = explicitJ > 0 ? explicitJ : jamiK;
+              kitchenTotals[normalizeName(fio)] = explicitJ > 0 ? explicitJ : jamiK;
             }
           }
 
-          // B) Kirim moduli: To'lovlar va O'quvchilarni o'qish (4 xil format tahlili)
+          // B) Kirim moduli: To'lovlar va O'quvchilarni tahlil qilish
           if (paymentsSheet) {
             const pRows = window.XLSX.utils.sheet_to_json(paymentsSheet, { header: 1, raw: false });
             
-            // 1. Formatni aniqlash
+            // Formatni aniqlash
             let isMayFormat = false;
             let headerRowIdx = -1;
 
             for (let r = 0; r < Math.min(pRows.length, 10); r++) {
               const row = pRows[r] || [];
               const rowStr = row.map(c => String(c || '').toLowerCase()).join(' ');
-              if (rowStr.includes("to'lov qilingan sana") || (rowStr.includes("o'quvchilar i.f.o") && rowStr.includes("to'lov turi"))) {
+              if (rowStr.includes("to'lov qilingan sana") || rowStr.includes("to`lov qilingan sana") || (rowStr.includes("o'quvchilar i.f.o") && rowStr.includes("to'lov turi"))) {
                 isMayFormat = true;
                 headerRowIdx = r;
                 break;
               }
-              if (rowStr.includes('i.f.o') || rowStr.includes('f.i.o') || rowStr.includes('o‘quvchi') || rowStr.includes('oquvchi')) {
+              if (rowStr.includes('i.f.o') || rowStr.includes('f.i.o') || rowStr.includes("o'quvchi") || rowStr.includes('oquvchi')) {
                 headerRowIdx = r;
                 break;
               }
@@ -1336,14 +1369,14 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             const pStart = headerRowIdx >= 0 ? headerRowIdx + 1 : 1;
 
             if (isMayFormat) {
-              // --- FORMAT 4: MAY OYI STRUKTURASI ---
-              // Col A: Sana, Col B: I.F.O, Col C: May oyi uchun, Col D: Iyun oyi uchun, Col E: To'lov turi (Naqd / Click)
+              // --- MAY OYI FORMATI ---
               for (let i = pStart; i < pRows.length; i++) {
                 const row = pRows[i];
                 if (!row || row.length === 0) continue;
-                const name = String(row[1] || '').trim();
-                if (!name || name.toLowerCase().startsWith('jami') || name.toLowerCase().startsWith('total')) continue;
+                const rawName = String(row[1] || '').trim();
+                if (!rawName || rawName.toLowerCase().startsWith('jami') || rawName.toLowerCase().startsWith('total') || rawName.toLowerCase().startsWith("o'quvchi") || rawName.toLowerCase().startsWith("o`quvchi")) continue;
 
+                const norm = normalizeName(rawName);
                 const dateStr = parseExcelDateInBrowser(row[0]) || getTodayInputFormat();
                 const sumMay = parseUzbekMoney(row[2]);
                 const sumIyun = parseUzbekMoney(row[3]);
@@ -1355,11 +1388,12 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 const click = isClick ? paySum : 0;
                 const oylikTolov = paySum > 0 ? paySum : 750000;
 
-                let existingStudent = updatedStudents.find(s => s.name.toLowerCase() === name.toLowerCase());
+                // Student deduplication
+                let existingStudent = updatedStudents.find(s => normalizeName(s.name) === norm);
                 if (!existingStudent) {
                   existingStudent = {
                     id: generateStudentId(),
-                    name,
+                    name: formatProperName(rawName),
                     phone: '+998 ',
                     parentPhone: '+998 ',
                     group: 'Asosiy guruh',
@@ -1369,34 +1403,59 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   };
                   updatedStudents.push(existingStudent);
                   newStudentsCount++;
+                } else {
+                  matchedStudentsCount++;
+                  if ((!existingStudent.monthlyFee || existingStudent.monthlyFee === 0) && oylikTolov > 0) {
+                    existingStudent.monthlyFee = oylikTolov;
+                  }
+                }
+
+                // Guruh tekshiruvi
+                if (!updatedGroups.some(g => cleanGroupName(g.name).toLowerCase() === 'asosiy guruh')) {
+                  updatedGroups.push({
+                    id: 'GRP-' + Math.floor(1000 + Math.random() * 9000),
+                    name: 'Asosiy guruh',
+                    category: 'Dasturlash',
+                    fee: oylikTolov,
+                    teacher: 'Asosiy Ustoz',
+                    days: 'Dush-Chor-Jum (14:00)',
+                    room: '1-Xona'
+                  });
                 }
 
                 totalImportedIncome += paySum;
 
-                updatedPayments.push({
-                  id: 'PAY-' + Math.floor(1000 + Math.random() * 9000),
-                  studentId: existingStudent.id,
-                  studentName: name,
-                  phoneStudent: '+998 ',
-                  phoneParent: '+998 ',
-                  oylikTolov,
-                  naqd,
-                  click,
-                  group: 'Asosiy guruh',
-                  paymentDate: dateStr,
-                  month: targetMonth,
-                  paymentType: isClick ? 'Click' : 'Naqd',
-                  note: payTypeStr ? `To'lov turi: ${row[4]}` : '',
-                  is3MonthPayment: false,
-                  bittaToliqSumma: 0,
-                  depozitBalansi: 0,
-                  isPrepaid: false
-                });
-                newPaymentsCount++;
+                // Payment deduplication
+                let existingPay = updatedPayments.find(p => p.month === targetMonth && (p.studentId === existingStudent.id || normalizeName(p.studentName) === norm));
+                if (existingPay) {
+                  existingPay.naqd = Math.max(existingPay.naqd, naqd);
+                  existingPay.click = Math.max(existingPay.click, click);
+                  existingPay.oylikTolov = oylikTolov;
+                } else {
+                  updatedPayments.push({
+                    id: 'PAY-' + Math.floor(1000 + Math.random() * 9000),
+                    studentId: existingStudent.id,
+                    studentName: existingStudent.name,
+                    phoneStudent: '+998 ',
+                    phoneParent: '+998 ',
+                    oylikTolov,
+                    naqd,
+                    click,
+                    group: 'Asosiy guruh',
+                    paymentDate: dateStr,
+                    month: targetMonth,
+                    paymentType: isClick ? 'Click' : 'Naqd',
+                    note: payTypeStr ? `To'lov turi: ${row[4]}` : '',
+                    is3MonthPayment: false,
+                    bittaToliqSumma: 0,
+                    depozitBalansi: 0,
+                    isPrepaid: false
+                  });
+                  newPaymentsCount++;
+                }
               }
             } else {
-              // --- FORMAT 1, 2, 3: AVGUST, IYUL, IYUN STRUKTURALARI ---
-              // Ustunlar joylashuvini dinamik aniqlash
+              // --- AVGUST, IYUL, IYUN FORMATLARI ---
               const hRow = pRows[headerRowIdx] || [];
               const subHRow = pRows[headerRowIdx + 1] || [];
               
@@ -1411,23 +1470,20 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               let colDate2 = -1;
               let colGroup = -1;
 
-              // Qidirish
               for (let c = 0; c < 15; c++) {
                 const hText = `${hRow[c] || ''} ${subHRow[c] || ''}`.toLowerCase();
                 if (hText.includes('oilasiniki') || hText.includes('oila')) colParentPhone = c;
                 else if (hText.includes("o'ziniki") || hText.includes('oziniki')) colStudentPhone = c;
-                else if (hText.includes("oylik to'lov") || hText.includes('oylik tolov')) colOylik = c;
+                else if (hText.includes("oylik to'lov") || hText.includes('oylik tolov') || hText.includes("oylik to`lov")) colOylik = c;
                 else if (hText.includes('naxt') || hText.includes('naqd')) colNaxt = c;
                 else if (hText.includes('clisk') || hText.includes('click')) colClick = c;
                 else if (hText.includes('qoldiq')) colQoldiq = c;
                 else if (hText.includes('1 to') || (hText.includes('sana') && colDate1 === -1)) colDate1 = c;
                 else if (hText.includes('2 to')) colDate2 = c;
-                else if (hText.includes('yo‘nalish') || hText.includes('yonalish') || hText.includes('guruh') || hText.includes('gurux')) colGroup = c;
+                else if (hText.includes('yo‘nalish') || hText.includes('yonalish') || hText.includes('yo`nalishi') || hText.includes('guruh') || hText.includes('gurux')) colGroup = c;
               }
 
-              // Fallback agar sarlavhalardan topilmasa (Avgust vs Iyul/Iyun farqi)
               if (colParentPhone !== -1) {
-                // Avgust format (Telefon ustunlari bor)
                 if (colOylik === -1) colOylik = 3;
                 if (colNaxt === -1) colNaxt = 4;
                 if (colClick === -1) colClick = 5;
@@ -1436,13 +1492,12 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 if (colDate2 === -1) colDate2 = 8;
                 if (colGroup === -1) colGroup = 9;
               } else {
-                // Iyul va Iyun format (Telefon ustunlari yo'q)
                 if (colOylik === -1) colOylik = 1;
                 if (colNaxt === -1) colNaxt = 2;
                 if (colClick === -1) colClick = 3;
                 if (colQoldiq === -1) colQoldiq = 4;
                 if (colGroup === -1) colGroup = 5;
-                if (colDate1 === -1) colDate1 = 6;
+                if (colDate1 === -1) colDate1 = (sheetNames.some(s => s.toLowerCase().includes('iyul')) ? 7 : 6);
               }
 
               const rowDataStart = (subHRow.some(c => String(c).toLowerCase().includes('naxt') || String(c).toLowerCase().includes('clisk'))) 
@@ -1453,12 +1508,19 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 const row = pRows[i];
                 if (!row || row.length === 0) continue;
 
-                const name = String(row[colName] || '').trim();
-                if (!name || name.toLowerCase().startsWith('jami') || name.toLowerCase().startsWith('total') || name.toLowerCase().startsWith('hisobot') || name.toLowerCase().startsWith('olingan')) {
+                const rawName = String(row[colName] || '').trim();
+                if (!rawName || rawName.toLowerCase().startsWith('jami') || rawName.toLowerCase().startsWith('total') || rawName.toLowerCase().startsWith('hisobot') || rawName.toLowerCase().startsWith('olingan') || rawName.toLowerCase().startsWith('i.f.o')) {
                   continue;
                 }
 
                 const rowFullText = row.map(c => String(c || '')).join(' ');
+                
+                // QAT'IY TO'XTATISH: Jadval ostidagi xodimlar/bonus hisob-kitob qismini o'quvchi sifatida o'qimaslik
+                if (rowFullText.toLowerCase().includes('olingan to`lov') || rowFullText.toLowerCase().includes("olingan to'lov") || rowFullText.toLowerCase().includes('olishi kerak') || row[2] === 0.17 || row[1] === 0.17) {
+                  break;
+                }
+
+                const norm = normalizeName(rawName);
                 const manOlmaganman = isNotReceivedText(rowFullText);
 
                 const parentPhone = (colParentPhone !== -1 && row[colParentPhone] && String(row[colParentPhone]).trim() !== '-') 
@@ -1480,19 +1542,15 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   manOlmaganmanCount++;
                 }
 
-                // Guruh
-                let guruh = (colGroup !== -1 && row[colGroup]) ? String(row[colGroup]).trim() : '';
-                if (!guruh || guruh === '-' || /^\d+$/.test(guruh)) {
-                  const grpMatch = rowFullText.match(/(AI-\d+|AI\s*-\s*\d+|python-\d+|java\s*\d+|fullstack-\d+|fullstack\d+|frontend-\d+|backend-\d+|foundation\s*-\d+)/i);
-                  guruh = grpMatch ? grpMatch[0] : 'Asosiy guruh';
-                }
+                // Guruhni tozalash va normalizatsiya qilish
+                const rawGroup = (colGroup !== -1 && row[colGroup]) ? String(row[colGroup]).trim() : '';
+                const guruh = cleanGroupName(rawGroup);
 
-                // Izohlar va sana
+                // Sana va Izohlar
                 let rawDate1 = colDate1 !== -1 ? row[colDate1] : '';
                 let rawDate2 = colDate2 !== -1 ? row[colDate2] : '';
                 let izoh = '';
 
-                // Izohlarni topish ("Elnurga bergan", "Jasminaga tashagan", "3 oylik qilgan", "50 joy...")
                 [rawDate1, rawDate2, row[10], row[11], row[12], row[19], row[20]].forEach(cell => {
                   if (cell) {
                     const strCell = String(cell).trim();
@@ -1504,18 +1562,16 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 });
 
                 if (manOlmaganman) izoh = izoh ? izoh + " (Man olmaganman)" : "Man olmaganman";
-
                 const dateVal = parseExcelDateInBrowser(rawDate1) || parseExcelDateInBrowser(rawDate2) || getTodayInputFormat();
+                const totalPaid = naqd + click;
+                const is3Month = (totalPaid >= oylikTolov * 2) || rowFullText.toLowerCase().includes('3 oylik');
 
-                // 3 Oylik tekshiruvi (masalan Luqmonov Kamron 1,900.000 to'lagan, -1,250.000 qoldiq)
-                const is3Month = (naqd + click >= oylikTolov * 2) || rowFullText.toLowerCase().includes('3 oylik');
-
-                // Studentni saqlash / yangilash
-                let existingStudent = updatedStudents.find(s => s.name.toLowerCase() === name.toLowerCase());
+                // Student deduplication (BAZADA BOR BO'LGAN TALABANI ANIQLASH)
+                let existingStudent = updatedStudents.find(s => normalizeName(s.name) === norm);
                 if (!existingStudent) {
                   existingStudent = {
                     id: generateStudentId(),
-                    name,
+                    name: formatProperName(rawName),
                     phone: studentPhone,
                     parentPhone: parentPhone,
                     group: guruh,
@@ -1525,10 +1581,25 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   };
                   updatedStudents.push(existingStudent);
                   newStudentsCount++;
+                } else {
+                  matchedStudentsCount++;
+                  // Bor bo'lgan talaba bo'lsa yangi qo'shmasdan, faqat yetishmayotgan ma'lumotlarini to'ldiramiz
+                  if ((!existingStudent.phone || existingStudent.phone === '+998 ' || existingStudent.phone.length < 6) && studentPhone && studentPhone.length >= 7) {
+                    existingStudent.phone = studentPhone;
+                  }
+                  if ((!existingStudent.parentPhone || existingStudent.parentPhone === '+998 ' || existingStudent.parentPhone.length < 6) && parentPhone && parentPhone.length >= 7) {
+                    existingStudent.parentPhone = parentPhone;
+                  }
+                  if (guruh !== 'Asosiy guruh' && (!existingStudent.group || existingStudent.group === 'Asosiy guruh')) {
+                    existingStudent.group = guruh;
+                  }
+                  if (oylikTolov > 0 && (!existingStudent.monthlyFee || existingStudent.monthlyFee === 0)) {
+                    existingStudent.monthlyFee = oylikTolov;
+                  }
                 }
 
-                // Guruhni tekshirish
-                if (!updatedGroups.some(g => g.name.toLowerCase() === guruh.toLowerCase())) {
+                // Guruh deduplication
+                if (guruh && guruh !== 'Asosiy guruh' && !updatedGroups.some(g => cleanGroupName(g.name).toLowerCase() === guruh.toLowerCase())) {
                   updatedGroups.push({
                     id: 'GRP-' + Math.floor(1000 + Math.random() * 9000),
                     name: guruh,
@@ -1540,7 +1611,6 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   });
                 }
 
-                const totalPaid = naqd + click;
                 let paymentType = 'Kutilmoqda';
                 if (is3Month) paymentType = '3 Oylik (To\'liq)';
                 else if (naqd > 0 && click > 0) paymentType = 'Click + Naqd';
@@ -1553,142 +1623,141 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 totalImportedIncome += totalPaid;
 
-                updatedPayments.push({
-                  id: 'PAY-' + Math.floor(1000 + Math.random() * 9000),
-                  studentId: existingStudent.id,
-                  studentName: name,
-                  phoneStudent: studentPhone,
-                  phoneParent: parentPhone,
-                  oylikTolov,
-                  naqd,
-                  click,
-                  group: guruh,
-                  paymentDate: dateVal,
-                  month: targetMonth,
-                  paymentType,
-                  note: izoh,
-                  is3MonthPayment: is3Month,
-                  bittaToliqSumma: is3Month ? totalPaid : 0,
-                  depozitBalansi: is3Month ? Math.max(0, totalPaid - oylikTolov) : 0,
-                  isPrepaid: false
-                });
-                newPaymentsCount++;
+                // Payment deduplication (Aynan shu talabaning shu oydagi to'lovini tekshirish)
+                let existingPay = updatedPayments.find(p => p.month === targetMonth && (p.studentId === existingStudent.id || normalizeName(p.studentName) === norm));
+                if (existingPay) {
+                  existingPay.naqd = Math.max(existingPay.naqd, naqd);
+                  existingPay.click = Math.max(existingPay.click, click);
+                  existingPay.oylikTolov = oylikTolov;
+                  if (izoh && !existingPay.note.includes(izoh)) {
+                    existingPay.note = existingPay.note ? existingPay.note + '; ' + izoh : izoh;
+                  }
+                } else {
+                  updatedPayments.push({
+                    id: 'PAY-' + Math.floor(1000 + Math.random() * 9000),
+                    studentId: existingStudent.id,
+                    studentName: existingStudent.name,
+                    phoneStudent: studentPhone,
+                    phoneParent: parentPhone,
+                    oylikTolov,
+                    naqd,
+                    click,
+                    group: guruh,
+                    paymentDate: dateVal,
+                    month: targetMonth,
+                    paymentType,
+                    note: izoh,
+                    is3MonthPayment: is3Month,
+                    bittaToliqSumma: is3Month ? totalPaid : 0,
+                    depozitBalansi: is3Month ? Math.max(0, totalPaid - oylikTolov) : 0,
+                    isPrepaid: false
+                  });
+                  newPaymentsCount++;
+                }
               }
             }
           }
 
-          // C) Chiqim moduli: Xodimlar va Markaz xarajatlari
+          // C) Chiqim moduli: Xodimlar va Markaz xarajatlari (Ikkala tomonni to'liq o'qish)
           if (expensesSheet) {
             const eRows = window.XLSX.utils.sheet_to_json(expensesSheet, { header: 1, raw: false });
-            let currentSec = 'UNKNOWN';
+            const isMayRasxod = fileName.toLowerCase().includes('may') || (expSheetName && expSheetName.toLowerCase().includes('rasxod'));
 
-            for (let i = 0; i < eRows.length; i++) {
-              const row = eRows[i];
-              if (!row || row.length === 0) continue;
-              const rText = row.map(c => String(c || '')).join(' ').toLowerCase();
-
-              if (rText.includes('xodim') || rText.includes('maosh') || rText.includes('oyligi') || rText.includes('ulush')) {
-                currentSec = 'STAFF';
-                continue;
-              }
-              if (rText.includes('markaz xarajat') || rText.includes('rasxod') || rText.includes('arenda') || rText.includes('svet')) {
-                currentSec = 'CENTER';
-                continue;
-              }
-
-              const firstCol = String(row[0] || '').trim();
-              if (!firstCol || firstCol.toLowerCase().startsWith('jami') || firstCol.toLowerCase().startsWith('total')) continue;
-
-              const dateP = parseExcelDateInBrowser(row[0]);
-              const isCenterRow = dateP !== null ||
-                rText.includes('target') || rText.includes('svet') || rText.includes('internet') ||
-                rText.includes('kuller') || rText.includes('arenda') || rText.includes('soliq') ||
-                rText.includes('baxora') || currentSec === 'CENTER';
-
-              if (isCenterRow && (dateP !== null || parseUzbekMoney(row[3]) > 0 || parseUzbekMoney(row[4]) > 0 || parseUzbekMoney(row[5]) > 0)) {
-                // MARKAZ XARAJATI
-                const sana = dateP || parseExcelDateInBrowser(row[1]) || getTodayInputFormat();
-                const kimga = String(row[1] || row[0] || 'Markaz xarajati').trim();
-                const izox = String(row[2] || '').trim();
-                const naqdExp = parseUzbekMoney(row[4] || row[3]);
-                const clickExp = parseUzbekMoney(row[5] || row[4]);
-
-                if (naqdExp > 0) {
+            if (isMayRasxod) {
+              for (let i = 4; i < eRows.length; i++) {
+                const r = eRows[i];
+                if (!r || (!r[1] && !r[3])) continue;
+                const kimga = String(r[1] || r[3] || 'Xarajat').trim();
+                const dateVal = parseExcelDateInBrowser(r[0]) || getTodayInputFormat();
+                const sum = parseUzbekMoney(r[5]) || parseUzbekMoney(r[4]);
+                const isClick = String(r[6] || '').toLowerCase().includes('click');
+                if (sum > 0) {
                   updatedExpenses.push({
                     id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
-                    category: mapExpenseCategory(kimga, izox),
-                    description: `${kimga} - ${izox} (Naqd)`,
-                    amount: naqdExp,
+                    category: mapExpenseCategory(kimga, String(r[3] || '')),
+                    description: String(r[3] || r[2] || kimga).trim(),
+                    amount: sum,
                     recipient: kimga,
+                    date: dateVal,
+                    month: targetMonth,
+                    type: isClick ? 'Click' : 'Naqd'
+                  });
+                  totalImportedExpense += sum;
+                  newExpensesCount++;
+                }
+              }
+            } else {
+              // Avgust, Iyul, Iyun: Side-by-side xarajatlar
+              for (let i = 2; i < eRows.length; i++) {
+                const r = eRows[i];
+                if (!r) continue;
+
+                // 1-qism: Xodim maoshi (Chap tomon, Cols 0-10)
+                const staffName = r[0] ? String(r[0]).trim() : '';
+                if (staffName && staffName.length > 3 && !staffName.toLowerCase().startsWith('f.i.o') && !staffName.toLowerCase().startsWith('jami')) {
+                  const normStaff = normalizeName(staffName);
+                  const oyligi = parseUzbekMoney(r[2]);
+                  const avans = parseUzbekMoney(r[6] || r[5] || r[4]);
+                  let oshxona = parseUzbekMoney(r[8] || r[7] || r[6]);
+                  if (oshxona === 0 && kitchenTotals[normStaff]) {
+                    oshxona = kitchenTotals[normStaff];
+                  }
+                  const jami = parseUzbekMoney(r[10] || r[9] || r[8]);
+
+                  let staffObj = updatedStaff.find(s => normalizeName(s.name) === normStaff);
+                  if (!staffObj) {
+                    staffObj = {
+                      id: 'STF-' + Math.floor(100 + Math.random() * 900),
+                      name: formatProperName(staffName),
+                      phone: '+998 ',
+                      role: staffName.toLowerCase().includes('direktor') ? 'staff' : 'teacher',
+                      position: staffName.toLowerCase().includes('direktor') ? 'Direktor' : 'Ustoz',
+                      percent: 40,
+                      fixedSalary: oyligi,
+                      joinedDate: getTodayInputFormat(),
+                      status: 'active'
+                    };
+                    updatedStaff.push(staffObj);
+                    newStaffCount++;
+                  }
+
+                  if (jami > 0) {
+                    updatedExpenses.push({
+                      id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                      category: staffName.toLowerCase().includes('direktor') || staffName.toLowerCase().includes('admin') ? 'Xodimlar oyligi' : 'Oqituvchilar oyligi',
+                      description: `Xodim maoshi: ${staffObj.name} (Avans: -${formatMoney(avans)}, Oshxona: -${formatMoney(oshxona)})`,
+                      amount: jami,
+                      recipient: staffObj.name,
+                      date: getTodayInputFormat(),
+                      month: targetMonth,
+                      type: 'Kadrlar'
+                    });
+                    totalImportedExpense += jami;
+                    newExpensesCount++;
+                  }
+                }
+
+                // 2-qism: Markaz xarajati (O'ng tomon, Cols 11-22)
+                const expDateRaw = r[11] || r[12] || r[10];
+                const expKimga = r[12] || r[13] || r[11];
+                const expIzox = r[13] || r[15] || r[14];
+                const expSum = parseUzbekMoney(r[16] || r[19] || r[14] || r[17]);
+
+                if (expKimga && typeof expKimga === 'string' && expKimga.trim().length > 2 && 
+                    !expKimga.toLowerCase().startsWith('f.i.o') && !expKimga.toLowerCase().startsWith('markaz xarajat') && expSum > 0) {
+                  const sana = parseExcelDateInBrowser(expDateRaw) || getTodayInputFormat();
+                  updatedExpenses.push({
+                    id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                    category: mapExpenseCategory(String(expKimga).trim(), String(expIzox || '').trim()),
+                    description: `${String(expKimga).trim()} - ${String(expIzox || '').trim()}`,
+                    amount: expSum,
+                    recipient: String(expKimga).trim(),
                     date: sana,
                     month: targetMonth,
-                    type: mapExpenseType(kimga)
+                    type: 'Markaz'
                   });
-                  totalImportedExpense += naqdExp;
+                  totalImportedExpense += expSum;
                   newExpensesCount++;
-                }
-                if (clickExp > 0) {
-                  updatedExpenses.push({
-                    id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
-                    category: mapExpenseCategory(kimga, izox),
-                    description: `${kimga} - ${izox} (Click)`,
-                    amount: clickExp,
-                    recipient: kimga,
-                    date: sana,
-                    month: targetMonth,
-                    type: mapExpenseType(kimga)
-                  });
-                  totalImportedExpense += clickExp;
-                  newExpensesCount++;
-                }
-              } else {
-                // XODIMLAR MAOSHI
-                const fio = firstCol;
-                const oyligi = parseUzbekMoney(row[1]);
-                let ulush = 0;
-                if (row[2] !== undefined && row[2] !== null) {
-                  const strT = String(row[2]).trim();
-                  if (strT.includes('%')) ulush = parseFloat(strT) / 100;
-                  else ulush = parseFloat(strT) || 0;
-                }
-                const avans = parseUzbekMoney(row[3]);
-                const oldingiQarz = parseUzbekMoney(row[4]);
-                let oshxona = parseUzbekMoney(row[6]);
-                if (oshxona === 0 && kitchenTotals[fio.toLowerCase()]) {
-                  oshxona = kitchenTotals[fio.toLowerCase()];
-                }
-
-                // Yakuniy Jami = Oyligi + oldingi oy qarzi - berilgan Avans - Oshxona
-                const yakuniyJami = Math.max(0, oyligi + oldingiQarz - avans - oshxona);
-
-                if (yakuniyJami > 0) {
-                  updatedExpenses.push({
-                    id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
-                    category: fio.toLowerCase().includes('direktor') || fio.toLowerCase().includes('admin') ? 'Xodimlar oyligi' : 'Oqituvchilar oyligi',
-                    description: `${fio} (Oylik: ${formatMoney(oyligi)}, Avans: -${formatMoney(avans)}, Oshxona: -${formatMoney(oshxona)})`,
-                    amount: yakuniyJami,
-                    recipient: fio,
-                    date: getTodayInputFormat(),
-                    month: targetMonth,
-                    type: 'Kadrlar'
-                  });
-                  totalImportedExpense += yakuniyJami;
-                  newExpensesCount++;
-                }
-
-                if (!updatedStaff.some(s => s.name.toLowerCase() === fio.toLowerCase())) {
-                  updatedStaff.push({
-                    id: 'STF-' + Math.floor(100 + Math.random() * 900),
-                    name: fio,
-                    phone: '+998 ',
-                    role: fio.toLowerCase().includes('direktor') ? 'staff' : 'teacher',
-                    position: fio.toLowerCase().includes('direktor') ? 'Direktor' : 'Ustoz',
-                    percent: Math.round(ulush * 100) || 40,
-                    fixedSalary: oyligi,
-                    joinedDate: getTodayInputFormat(),
-                    status: 'active'
-                  });
-                  newStaffCount++;
                 }
               }
             }
@@ -1697,30 +1766,27 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           // D) Click daftari: qo'shimcha tushum va chiqimlar
           if (clickSheet) {
             const clkRows = window.XLSX.utils.sheet_to_json(clickSheet, { header: 1, raw: false });
-            for (let i = 0; i < clkRows.length; i++) {
-              const row = clkRows[i];
-              if (!row || row.length === 0) continue;
-              const rText = row.map(c => String(c || '')).join(' ').toLowerCase();
+            for (let i = 1; i < clkRows.length; i++) {
+              const r = clkRows[i];
+              if (!r || r.length === 0) continue;
+              const rText = r.map(c => String(c || '')).join(' ').toLowerCase();
               if (rText.includes('no') && rText.includes('summa')) continue;
 
-              const chiqimSumma = parseUzbekMoney(row[6]);
-              const chiqimIzox = String(row[7] || row[6] || '').trim();
-              if (chiqimSumma > 0 || (chiqimIzox && (chiqimIzox.includes('arenda') || chiqimIzox.includes('soliq')))) {
-                const amount = chiqimSumma > 0 ? chiqimSumma : parseUzbekMoney(row[7]);
-                if (amount > 0) {
-                  updatedExpenses.push({
-                    id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
-                    category: chiqimIzox.includes('arenda') ? 'Kommunal va Ijara' : 'Boshqa',
-                    description: `Click yechib olish: ${chiqimIzox}`,
-                    amount: amount,
-                    recipient: 'Click Kassa',
-                    date: getTodayInputFormat(),
-                    month: targetMonth,
-                    type: 'Fixed'
-                  });
-                  totalImportedExpense += amount;
-                  newExpensesCount++;
-                }
+              const chiqimSum = parseUzbekMoney(r[5] || r[6]);
+              const chiqimIzox = String(r[6] || r[7] || '').trim();
+              if (chiqimSum > 0) {
+                updatedExpenses.push({
+                  id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                  category: chiqimIzox.toLowerCase().includes('arenda') ? 'Kommunal va Ijara' : 'Boshqa',
+                  description: `Click yechib olish: ${chiqimIzox}`,
+                  amount: chiqimSum,
+                  recipient: 'Click Kassa',
+                  date: parseExcelDateInBrowser(r[4]) || getTodayInputFormat(),
+                  month: targetMonth,
+                  type: 'Click'
+                });
+                totalImportedExpense += chiqimSum;
+                newExpensesCount++;
               }
             }
           }
@@ -1738,6 +1804,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             month: targetMonth,
             paymentsCount: newPaymentsCount,
             studentsCount: newStudentsCount,
+            matchedStudentsCount: matchedStudentsCount,
             expensesCount: newExpensesCount,
             staffCount: newStaffCount,
             totalIncome: totalImportedIncome,
@@ -1749,7 +1816,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
           setExcelImportSummary(summaryObj);
           setIsExcelImportModalOpen(true);
-          showToast(`"${fileName}" fayli ${targetMonth} oyiga muvaffaqiyatli yuklandi! 📊✅`);
+          showToast(`"${fileName}" fayli ${targetMonth} oyiga muvaffaqiyatli tahlil qilinib yuklandi! 📊✅ (Yangi talabalar: ${newStudentsCount}, Baza bilan mos tushganlar: ${matchedStudentsCount})`);
         } catch (err) {
           console.error("Excel import xatosi:", err);
           alert("Excel faylni o'qishda xatolik yuz berdi: " + err.message);

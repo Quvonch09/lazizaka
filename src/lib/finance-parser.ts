@@ -122,6 +122,38 @@ export function isNotReceived(rowText: string): boolean {
          text.includes('olmadim');
 }
 
+export function normalizeName(name: string): string {
+  if (!name) return '';
+  return String(name)
+    .toLowerCase()
+    .replace(/[`'ʻ’ʼ]/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function formatProperName(name: string): string {
+  if (!name) return '';
+  return String(name).trim().split(/\s+/).map(word => {
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
+}
+
+export function cleanGroupName(raw: any): string {
+  if (!raw) return 'Asosiy guruh';
+  let s = String(raw).trim();
+  const m = s.match(/^(ai|python|fullstack|frontend|backend|java|foundation|dasturlash)[\s\-_]*0*(\d+)$/i);
+  if (m) {
+    const prefix = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
+    const num = parseInt(m[2], 10);
+    if (prefix.toLowerCase() === 'ai') return 'AI-' + num;
+    return prefix + '-' + num;
+  }
+  if (s.length > 2 && s.length < 25 && !/(xarajat|founder|olinishi|berdim|jami|hisobot|qoldiq|naqd|click|oylik)/i.test(s)) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  return 'Asosiy guruh';
+}
+
 /**
  * UUID generatsiyasi uchun yordamchi
  */
@@ -162,12 +194,18 @@ export function parsePaymentsData(rows: any[][], oy: MonthName): Payment[] {
 
     const ifo = cleanText(row[0] || row[1]);
     // Jami, Hisobot, Total, yoki bo'sh qatorlarni chetlab o'tish
-    if (!ifo || ifo.toLowerCase().startsWith('jami') || ifo.toLowerCase().startsWith('total') || ifo.toLowerCase().startsWith('hisobot')) {
+    if (!ifo || ifo.toLowerCase().startsWith('jami') || ifo.toLowerCase().startsWith('total') || ifo.toLowerCase().startsWith('hisobot') || ifo.toLowerCase().startsWith('i.f.o')) {
       continue;
     }
 
     // Butun qator matnini tahlil qilish ("Man olmaganman" tekshiruvi uchun)
     const rowFullText = row.map(c => cleanText(c)).join(' ');
+    
+    // Qat'iy to'xtatish: jadval ostidagi 17% bonus jadvalini o'quvchilar ro'yxatiga qo'shmaslik
+    if (rowFullText.toLowerCase().includes('olingan to`lov') || rowFullText.toLowerCase().includes("olingan to'lov") || rowFullText.toLowerCase().includes('olishi kerak') || row[2] === 0.17 || row[1] === 0.17) {
+      break;
+    }
+
     const manOlmaganman = isNotReceived(rowFullText);
 
     // Telefonlar (odatda 2- va 3-ustunlar)
@@ -203,9 +241,10 @@ export function parsePaymentsData(rows: any[][], oy: MonthName): Payment[] {
     let guruh = cleanText(row[9] || row[10] || row[6] || '');
     if (!guruh || guruh === '-' || /^\d+$/.test(guruh)) {
       // Heuristik: agar guruh topilmasa, qatordagi guruh nomlarini qidiramiz
-      const groupMatch = rowFullText.match(/(AI-\d+|python-\d+|java\s*\d+|fullstack-\d+|frontend-\d+|backend-\d+)/i);
+      const groupMatch = rowFullText.match(/(AI-\d+|python-\d+|java\s*\d+|fullstack-\d+|frontend-\d+|backend-\d+|foundation[-\s]*\d+)/i);
       guruh = groupMatch ? groupMatch[0] : 'Asosiy guruh';
     }
+    guruh = cleanGroupName(guruh);
 
     // Izoh
     let izoh = cleanText(row[10] || row[11] || row[12] || '');
