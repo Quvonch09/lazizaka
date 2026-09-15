@@ -1396,34 +1396,40 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             const pStart = headerRowIdx >= 0 ? headerRowIdx + 1 : 1;
 
             if (isMayFormat) {
-              // --- MAY OYI FORMATI ---
+              // --- MAY OYI FORMATI (Kirim: May oyi uchun + Iyun oyi oldindan to'lov) ---
               for (let i = pStart; i < pRows.length; i++) {
                 const row = pRows[i];
                 if (!row || row.length === 0) continue;
-                const rawName = String(row[1] || '').trim();
-                if (!rawName || rawName.toLowerCase().startsWith('jami') || rawName.toLowerCase().startsWith('total') || rawName.toLowerCase().startsWith("o'quvchi") || rawName.toLowerCase().startsWith("o`quvchi")) continue;
+                let rawName = String(row[1] || '').trim();
+                if ((/^\d+$/.test(rawName) || !rawName) && row[0] && typeof row[0] === 'string' && !/^\d+$/.test(row[0])) {
+                  rawName = String(row[0]).trim();
+                }
+                if (!rawName || rawName.toLowerCase().startsWith('jami') || rawName.toLowerCase().startsWith('total') || rawName.toLowerCase().includes("o'quvchilar") || rawName.toLowerCase().includes("o`quvchilar") || rawName.toLowerCase().includes('i.f.o')) continue;
 
                 const norm = normalizeName(rawName);
                 const dateStr = parseExcelDateInBrowser(row[0]) || getTodayInputFormat();
                 const sumMay = parseUzbekMoney(row[2]);
                 const sumIyun = parseUzbekMoney(row[3]);
-                const paySum = sumMay > 0 ? sumMay : (sumIyun > 0 ? sumIyun : 0);
-                const payTypeStr = String(row[4] || '').toLowerCase();
+                const paySum = (sumMay > 0 ? sumMay : 0) + (sumIyun > 0 ? sumIyun : 0);
+                if (paySum <= 0) continue;
 
+                const payTypeStr = String(row[4] || '').toLowerCase();
                 const isClick = payTypeStr.includes('click') || payTypeStr.includes('clisk');
                 const naqd = isClick ? 0 : paySum;
                 const click = isClick ? paySum : 0;
-                const oylikTolov = paySum > 0 ? paySum : 750000;
+                const oylikTolov = sumMay > 0 ? sumMay : (sumIyun > 0 ? sumIyun : 750000);
 
                 // Student deduplication
                 let existingStudent = updatedStudents.find(s => normalizeName(s.name) === norm);
+                const assignedGroup = existingStudent && existingStudent.group ? existingStudent.group : 'Asosiy guruh';
+
                 if (!existingStudent) {
                   existingStudent = {
                     id: generateStudentId(),
                     name: formatProperName(rawName),
                     phone: '+998 ',
                     parentPhone: '+998 ',
-                    group: 'Asosiy guruh',
+                    group: assignedGroup,
                     monthlyFee: oylikTolov,
                     status: 'active',
                     joinedDate: dateStr
@@ -1438,10 +1444,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 }
 
                 // Guruh tekshiruvi
-                if (!updatedGroups.some(g => cleanGroupName(g.name).toLowerCase() === 'asosiy guruh')) {
+                if (!updatedGroups.some(g => cleanGroupName(g.name).toLowerCase() === assignedGroup.toLowerCase())) {
                   updatedGroups.push({
                     id: 'GRP-' + Math.floor(1000 + Math.random() * 9000),
-                    name: 'Asosiy guruh',
+                    name: assignedGroup,
                     category: 'Dasturlash',
                     fee: oylikTolov,
                     teacher: 'Asosiy Ustoz',
@@ -1452,12 +1458,19 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 totalImportedIncome += paySum;
 
+                const noteText = (sumIyun > 0 && sumMay > 0) 
+                  ? `May: ${formatMoney(sumMay)}, Iyun: ${formatMoney(sumIyun)}` 
+                  : (sumIyun > 0 ? "Iyun oyi uchun oldindan to'lov" : (payTypeStr ? `To'lov turi: ${row[4]}` : ''));
+
                 // Payment deduplication
                 let existingPay = updatedPayments.find(p => p.month === targetMonth && (p.studentId === existingStudent.id || normalizeName(p.studentName) === norm));
                 if (existingPay) {
-                  existingPay.naqd = Math.max(existingPay.naqd, naqd);
-                  existingPay.click = Math.max(existingPay.click, click);
+                  existingPay.naqd = naqd;
+                  existingPay.click = click;
                   existingPay.oylikTolov = oylikTolov;
+                  existingPay.paymentType = isClick ? 'Click' : 'Naqd';
+                  existingPay.paymentDate = dateStr;
+                  if (noteText) existingPay.note = noteText;
                 } else {
                   updatedPayments.push({
                     id: 'PAY-' + Math.floor(1000 + Math.random() * 9000),
@@ -1468,15 +1481,15 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     oylikTolov,
                     naqd,
                     click,
-                    group: 'Asosiy guruh',
+                    group: assignedGroup,
                     paymentDate: dateStr,
                     month: targetMonth,
                     paymentType: isClick ? 'Click' : 'Naqd',
-                    note: payTypeStr ? `To'lov turi: ${row[4]}` : '',
+                    note: noteText,
                     is3MonthPayment: false,
                     bittaToliqSumma: 0,
                     depozitBalansi: 0,
-                    isPrepaid: false
+                    isPrepaid: sumIyun > 0 && sumMay <= 0
                   });
                   newPaymentsCount++;
                 }
@@ -1941,27 +1954,103 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             const isMayRasxod = fileName.toLowerCase().includes('may') || (legacyExpSheetName && legacyExpSheetName.toLowerCase().includes('rasxod'));
 
             if (isMayRasxod) {
+              // --- MAY OYI RASXOD FORMATI (Chiqim: Aprel oyligi uchun + May oyi xarajatlari) ---
               for (let i = 4; i < eRows.length; i++) {
                 const r = eRows[i];
-                if (!r || (!r[1] && !r[3])) continue;
-                const kimga = String(r[1] || r[3] || 'Xarajat').trim();
-                const dateVal = parseExcelDateInBrowser(r[0]) || getTodayInputFormat();
-                const sum = parseUzbekMoney(r[5]) || parseUzbekMoney(r[4]);
-                const isClick = String(r[6] || '').toLowerCase().includes('click');
-                if (sum > 0) {
-                  updatedExpenses.push({
-                    id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
-                    category: mapExpenseCategory(kimga, String(r[3] || '')),
-                    description: String(r[3] || r[2] || kimga).trim(),
-                    amount: sum,
-                    recipient: kimga,
-                    date: dateVal,
-                    month: targetMonth,
-                    type: isClick ? 'Click' : 'Naqd'
-                  });
-                  totalImportedExpense += sum;
-                  newExpensesCount++;
+                if (!r || r.length === 0) continue;
+
+                const sanaRaw = r[0];
+                const kimgaRaw = String(r[1] || '').trim();
+                const sababRaw = String(r[2] || '').trim();
+                const izoxRaw = String(r[3] || '').trim();
+                const valAprel = parseUzbekMoney(r[4]);
+                const valMay = parseUzbekMoney(r[5]);
+                const summa = valAprel + valMay;
+                if (summa <= 0) continue;
+
+                const turRaw = String(r[6] || 'Naqd').toLowerCase();
+                const isClick = turRaw.includes('click') || turRaw.includes('karta');
+                const dateVal = parseExcelDateInBrowser(sanaRaw) || getTodayInputFormat();
+
+                const fullText = `${kimgaRaw} ${sababRaw} ${izoxRaw}`.toLowerCase();
+
+                let expType = 'Markaz';
+                let category = 'Boshqa operatsion';
+                let recipient = kimgaRaw;
+
+                // 1. Founder xarajatlari
+                if (fullText.includes('founder') || fullText.includes('shahrixon') || fullText.includes("ta'sischi") || fullText.includes('tasischi')) {
+                  expType = 'Founder';
+                  category = 'Founder xarajatlari';
+                  recipient = kimgaRaw && kimgaRaw.toLowerCase() !== 'none' ? kimgaRaw : 'Raxmatullayev Shahrixon';
                 }
+                // 2. Kadrlar & Ustozlar oyligi / Avans
+                else if (fullText.includes('oylik') || fullText.includes('avans') || fullText.includes('akademic') || 
+                         ['sardor', 'madamin', 'jaxongir', 'nazirqulov', "g'olib", 'elnur', 'jasmina', 'umid mobilograf'].some(t => fullText.includes(t))) {
+                  expType = 'Kadrlar';
+                  category = ['admin', 'farrosh', 'direktor', 'mobilograf'].some(w => fullText.includes(w)) ? 'Xodimlar oyligi' : "O'qituvchilar oyligi";
+                  const words = izoxRaw.split(/\s+/).filter(Boolean);
+                  recipient = (kimgaRaw && kimgaRaw.toLowerCase() !== 'none') ? kimgaRaw : (words.length > 0 ? words.slice(0, 2).join(' ') : 'Ustoz / Xodim');
+
+                  // Xodim profiliga ham qo'shish
+                  const normStaff = normalizeName(recipient);
+                  let staffObj = updatedStaff.find(s => normalizeName(s.name) === normStaff);
+                  if (!staffObj && recipient.length > 3) {
+                    staffObj = {
+                      id: 'STF-' + Math.floor(100 + Math.random() * 900),
+                      name: formatProperName(recipient),
+                      phone: '+998 ',
+                      role: category.includes('Xodim') ? 'staff' : 'teacher',
+                      position: category.includes('Xodim') ? 'Xodim' : 'Ustoz',
+                      percent: 40,
+                      fixedSalary: 0,
+                      joinedDate: getTodayInputFormat(),
+                      status: 'active'
+                    };
+                    updatedStaff.push(staffObj);
+                    newStaffCount++;
+                  }
+                }
+                // 3. Markaz xarajatlari
+                else {
+                  expType = 'Markaz';
+                  if (fullText.includes('marketing') || fullText.includes('target') || fullText.includes('reklama')) {
+                    category = 'Reklama va Target';
+                  } else if (fullText.includes('arenda') || fullText.includes('ijara')) {
+                    category = 'Bino va Ijara';
+                  } else if (fullText.includes('svet') || fullText.includes('elektr') || fullText.includes('gaz')) {
+                    category = 'Kommunal (Svet/Gaz)';
+                  } else if (fullText.includes('suv') || fullText.includes('kuller')) {
+                    category = 'Kommunal (Suv)';
+                  } else if (fullText.includes('internet') || fullText.includes('server') || fullText.includes('telegram')) {
+                    category = 'Internet va IT';
+                  } else if (fullText.includes('remont') || fullText.includes('montaj') || fullText.includes("ta'mir")) {
+                    category = "Ta'mirlash va Jihoz";
+                  } else {
+                    category = mapExpenseCategory(recipient, izoxRaw || sababRaw);
+                  }
+                  recipient = (kimgaRaw && kimgaRaw.toLowerCase() !== 'none') ? kimgaRaw : (izoxRaw || sababRaw || 'Markaz');
+                }
+
+                let desc = sababRaw && izoxRaw ? `${sababRaw}: ${izoxRaw}` : (izoxRaw || sababRaw || category);
+                if (valAprel > 0 && valMay > 0) {
+                  desc += ` (Aprel: ${formatMoney(valAprel)}, May: ${formatMoney(valMay)})`;
+                } else if (valAprel > 0) {
+                  desc += ` (Aprel oyligidan)`;
+                }
+
+                updatedExpenses.push({
+                  id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                  category,
+                  description: desc,
+                  amount: summa,
+                  recipient: formatProperName(recipient),
+                  date: dateVal,
+                  month: targetMonth,
+                  type: expType
+                });
+                totalImportedExpense += summa;
+                newExpensesCount++;
               }
             } else {
               // Avgust, Iyul, Iyun: Side-by-side xarajatlar
