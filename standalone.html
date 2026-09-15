@@ -1307,6 +1307,16 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         setIsMonthSelectModalOpen(false);
         setIsExcelLoading(true);
 
+        // Har bir yangi yozuv uchun mutlaqo unikal ID generatorlari (PostgreSQL collision oldini olish)
+        let localExpCounter = 0;
+        let localPayCounter = 0;
+        let localGrpCounter = 0;
+        let localStfCounter = 0;
+        const makeExpId = () => `EXP-${Date.now().toString(36)}-${++localExpCounter}-${Math.random().toString(36).substring(2, 7)}`;
+        const makePayId = () => `PAY-${Date.now().toString(36)}-${++localPayCounter}-${Math.random().toString(36).substring(2, 7)}`;
+        const makeGrpId = () => `GRP-${Date.now().toString(36)}-${++localGrpCounter}-${Math.random().toString(36).substring(2, 7)}`;
+        const makeStfId = () => `STF-${Date.now().toString(36)}-${++localStfCounter}-${Math.random().toString(36).substring(2, 7)}`;
+
         try {
           // Listlarni aniqlash (Standart shablon va eski oylar uchun)
           const paySheetName = sheetNames.find(s => {
@@ -1485,7 +1495,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 // Guruh tekshiruvi
                 if (!updatedGroups.some(g => cleanGroupName(g.name).toLowerCase() === assignedGroup.toLowerCase())) {
                   updatedGroups.push({
-                    id: 'GRP-' + Math.floor(1000 + Math.random() * 9000),
+                    id: makeGrpId(),
                     name: assignedGroup,
                     category: 'Dasturlash',
                     fee: oylikTolov,
@@ -1512,7 +1522,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   if (noteText) existingPay.note = noteText;
                 } else {
                   updatedPayments.push({
-                    id: 'PAY-' + Math.floor(1000 + Math.random() * 9000),
+                    id: makePayId(),
                     studentId: existingStudent.id,
                     studentName: existingStudent.name,
                     phoneStudent: '+998 ',
@@ -1690,7 +1700,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 // Guruh deduplication
                 if (guruh && guruh !== 'Asosiy guruh' && !updatedGroups.some(g => cleanGroupName(g.name).toLowerCase() === guruh.toLowerCase())) {
                   updatedGroups.push({
-                    id: 'GRP-' + Math.floor(1000 + Math.random() * 9000),
+                    id: makeGrpId(),
                     name: guruh,
                     category: 'Dasturlash',
                     fee: oylikTolov,
@@ -1723,7 +1733,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   }
                 } else {
                   updatedPayments.push({
-                    id: 'PAY-' + Math.floor(1000 + Math.random() * 9000),
+                    id: makePayId(),
                     studentId: existingStudent.id,
                     studentName: existingStudent.name,
                     phoneStudent: studentPhone,
@@ -1820,7 +1830,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               let staffObj = updatedStaff.find(s => normalizeName(s.name) === normStaff);
               if (!staffObj) {
                 staffObj = {
-                  id: 'STF-' + Math.floor(100 + Math.random() * 900),
+                  id: makeStfId(),
                   name: formatProperName(rawName),
                   phone: '+998 ',
                   role: roleStr.toLowerCase().includes('direktor') || roleStr.toLowerCase().includes('admin') || roleStr.toLowerCase().includes('farrosh') || roleStr.toLowerCase().includes('xodim') ? 'staff' : 'teacher',
@@ -1849,7 +1859,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 if (izoh) desc += ` [${izoh}]`;
 
                 updatedExpenses.push({
-                  id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                  id: makeExpId(),
                   category: roleStr.toLowerCase().includes('direktor') || roleStr.toLowerCase().includes('admin') || roleStr.toLowerCase().includes('xodim') || roleStr.toLowerCase().includes('farrosh') ? 'Xodimlar oyligi' : "O'qituvchilar oyligi",
                   description: desc,
                   amount: payAmount,
@@ -1912,7 +1922,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               const descText = rawIzoh ? `${kimgaText} - ${rawIzoh}` : kimgaText;
 
               updatedExpenses.push({
-                id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                id: makeExpId(),
                 category: rawKat ? rawKat : mapExpenseCategory(kimgaText, rawIzoh),
                 description: descText,
                 amount: sumVal,
@@ -1973,7 +1983,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               const descText = rawIzoh || rawMaqsad ? `${ismText} - ${rawIzoh || rawMaqsad}` : `Founder xarajati: ${ismText}`;
 
               updatedExpenses.push({
-                id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                id: makeExpId(),
                 category: 'Founder xarajatlari',
                 description: descText,
                 amount: sumVal,
@@ -2036,7 +2046,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   let staffObj = updatedStaff.find(s => normalizeName(s.name) === normStaff);
                   if (!staffObj && recipient.length > 3) {
                     staffObj = {
-                      id: 'STF-' + Math.floor(100 + Math.random() * 900),
+                      id: makeStfId(),
                       name: formatProperName(recipient),
                       phone: '+998 ',
                       role: category.includes('Xodim') ? 'staff' : 'teacher',
@@ -2079,7 +2089,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 }
 
                 updatedExpenses.push({
-                  id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                  id: makeExpId(),
                   category,
                   description: desc,
                   amount: summa,
@@ -2112,7 +2122,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   let staffObj = updatedStaff.find(s => normalizeName(s.name) === normStaff);
                   if (!staffObj) {
                     staffObj = {
-                      id: 'STF-' + Math.floor(100 + Math.random() * 900),
+                      id: makeStfId(),
                       name: formatProperName(staffName),
                       phone: '+998 ',
                       role: staffName.toLowerCase().includes('direktor') ? 'staff' : 'teacher',
@@ -2128,7 +2138,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                   if (jami > 0) {
                     updatedExpenses.push({
-                      id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                      id: makeExpId(),
                       category: staffName.toLowerCase().includes('direktor') || staffName.toLowerCase().includes('admin') ? 'Xodimlar oyligi' : 'Oqituvchilar oyligi',
                       description: `Xodim maoshi: ${staffObj.name} (Avans: -${formatMoney(avans)}, Oshxona: -${formatMoney(oshxona)})`,
                       amount: jami,
@@ -2152,7 +2162,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     !expKimga.toLowerCase().startsWith('f.i.o') && !expKimga.toLowerCase().startsWith('markaz xarajat') && expSum > 0) {
                   const sana = parseExcelDateInBrowser(expDateRaw) || getTodayInputFormat();
                   updatedExpenses.push({
-                    id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                    id: makeExpId(),
                     category: mapExpenseCategory(String(expKimga).trim(), String(expIzox || '').trim()),
                     description: `${String(expKimga).trim()} - ${String(expIzox || '').trim()}`,
                     amount: expSum,
@@ -2181,7 +2191,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               const chiqimIzox = String(r[6] || r[7] || '').trim();
               if (chiqimSum > 0) {
                 updatedExpenses.push({
-                  id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                  id: makeExpId(),
                   category: chiqimIzox.toLowerCase().includes('arenda') ? 'Kommunal va Ijara' : 'Boshqa',
                   description: `Click yechib olish: ${chiqimIzox}`,
                   amount: chiqimSum,
@@ -2261,95 +2271,129 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           const curExpenses = (customData && customData.expenses) || expenses;
           const curStaff = (customData && customData.staff) || staff;
 
+          // PostgreSQL "ON CONFLICT DO UPDATE command cannot affect row a second time" xatosini
+          // butunlay yo'q qilish uchun har bir to'plamning ID larini 100% unikal qilish helperi:
+          let dedupSeq = 0;
+          const ensureUniquePayload = (list, prefix, mapper) => {
+            const seenIds = new Set();
+            const result = [];
+            for (let i = 0; i < list.length; i++) {
+              const item = list[i];
+              if (!item) continue;
+              const mapped = mapper(item);
+              let id = mapped.id ? String(mapped.id).trim() : '';
+              if (!id || seenIds.has(id)) {
+                id = `${prefix}-${Date.now().toString(36)}-${++dedupSeq}-${Math.random().toString(36).substring(2, 7)}`;
+                mapped.id = id;
+              }
+              seenIds.add(id);
+              result.push(mapped);
+            }
+            return result;
+          };
+
+          // Katta ma'lumotlarni xavfsiz qismlarga (chunk) bo'lib yuklash
+          const safeChunkedUpsert = async (tableName, items, chunkSize = 80) => {
+            if (!items || items.length === 0) return;
+            for (let i = 0; i < items.length; i += chunkSize) {
+              const chunk = items.slice(i, i + chunkSize);
+              const { error } = await supabase.from(tableName).upsert(chunk);
+              if (error) throw new Error(`${tableName} jadvalini yuklashda xato: ${error.message}`);
+            }
+          };
+
           // 1. Sync Groups
-          const mappedGroups = curGroups.map(g => ({
-            id: g.id, name: g.name, category: g.category || 'Dasturlash', fee: Number(g.fee || 0),
-            teacher: g.teacher || '', days: g.days || '', room: g.room || ''
+          const mappedGroups = ensureUniquePayload(curGroups, 'GRP', g => ({
+            id: g.id,
+            name: g.name,
+            category: g.category || 'Dasturlash',
+            fee: Number(g.fee || 0),
+            teacher: g.teacher || '',
+            days: g.days || '',
+            room: g.room || ''
           }));
-          const mappedUsers = curUsers.map(u => ({
-            id: u.id, username: u.username, password: u.password,
-            full_name: u.fullName, role: u.role || 'admin', phone: u.phone || ''
+          await safeChunkedUpsert('groups', mappedGroups);
+
+          // 2. Sync Users
+          const mappedUsers = ensureUniquePayload(curUsers, 'USR', u => ({
+            id: u.id,
+            username: u.username,
+            password: u.password,
+            full_name: u.fullName,
+            role: u.role || 'admin',
+            phone: u.phone || ''
           }));
-          try { await supabase.from('users').upsert(mappedUsers); } catch(ue) { console.warn('Users sync notice:', ue); }
+          try { await safeChunkedUpsert('users', mappedUsers); } catch(ue) { console.warn('Users sync notice:', ue); }
 
-          const { error: gErr } = await supabase.from('groups').upsert(mappedGroups);
-          if (gErr) throw new Error("Guruhlarni yuklashda xato: " + gErr.message);
-
-          // 2. Sync Students (Barcha sanalar formatIsoDateSafe orqali qat'iy tekshiriladi)
-          const mappedStudents = curStudents.map(s => ({
-            id: s.id, 
-            name: s.name, 
-            phone: s.phone || '', 
+          // 3. Sync Students
+          const mappedStudents = ensureUniquePayload(curStudents, 'STU', s => ({
+            id: s.id,
+            name: s.name,
+            phone: s.phone || '',
             parent_phone: s.parentPhone || '',
-            "group": s.group || 'Asosiy guruh', 
-            monthly_fee: Number(s.monthlyFee || 0), 
-            status: s.status || 'active', 
+            "group": s.group || 'Asosiy guruh',
+            monthly_fee: Number(s.monthlyFee || 0),
+            status: s.status || 'active',
             joined_date: formatIsoDateSafe(s.joinedDate)
           }));
-          const { error: sErr } = await supabase.from('students').upsert(mappedStudents);
-          if (sErr) throw new Error("Studentlarni yuklashda xato: " + sErr.message);
+          await safeChunkedUpsert('students', mappedStudents);
 
-          // 3. Sync Months
-          const mappedMonths = curMonths.map(m => ({ name: m }));
-          const { error: mErr } = await supabase.from('months').upsert(mappedMonths);
-          if (mErr) throw new Error("Oylarni yuklashda xato: " + mErr.message);
+          // 4. Sync Months (Nomlar bo'yicha qat'iy deduplikatsiya)
+          const uniqueMonthNames = Array.from(new Set(curMonths.map(m => (typeof m === 'string' ? m : (m && m.name ? m.name : '')).trim()))).filter(Boolean);
+          const mappedMonths = uniqueMonthNames.map(name => ({ name }));
+          await safeChunkedUpsert('months', mappedMonths);
 
-          // 4. Sync Payments
-          const mappedPayments = curPayments.map(p => ({
-            id: p.id, 
-            student_id: p.studentId || null, 
+          // 5. Sync Payments
+          const mappedPayments = ensureUniquePayload(curPayments, 'PAY', p => ({
+            id: p.id,
+            student_id: p.studentId || null,
             student_name: p.studentName,
-            phone_student: p.phoneStudent || '', 
+            phone_student: p.phoneStudent || '',
             phone_parent: p.phoneParent || '',
-            oylik_tolov: Number(p.oylikTolov || 0), 
-            naqd: Number(p.naqd || 0), 
-            click: Number(p.click || 0), 
+            oylik_tolov: Number(p.oylikTolov || 0),
+            naqd: Number(p.naqd || 0),
+            click: Number(p.click || 0),
             payment_date: formatIsoDateSafe(p.paymentDate),
-            naqd2: Number(p.naqd2 || 0), 
-            click2: Number(p.click2 || 0), 
+            naqd2: Number(p.naqd2 || 0),
+            click2: Number(p.click2 || 0),
             payment_date2: p.paymentDate2 ? formatIsoDateSafe(p.paymentDate2) : null,
-            month: p.month, 
-            payment_type: p.paymentType || 'Naqd', 
-            "group": p.group || 'Asosiy guruh', 
+            month: p.month,
+            payment_type: p.paymentType || 'Naqd',
+            "group": p.group || 'Asosiy guruh',
             note: p.note || '',
-            is_3month_payment: Boolean(p.is3MonthPayment), 
+            is_3month_payment: Boolean(p.is3MonthPayment),
             is_prepaid: Boolean(p.isPrepaid),
-            bitta_toliq_summa: Number(p.bittaToliqSumma || 0), 
+            bitta_toliq_summa: Number(p.bittaToliqSumma || 0),
             depozit_balansi: Number(p.depozitBalansi || 0)
           }));
-          const { error: pErr } = await supabase.from('payments').upsert(mappedPayments);
-          if (pErr) throw new Error("To'lovlarni yuklashda xato: " + pErr.message);
+          await safeChunkedUpsert('payments', mappedPayments);
 
-          // 5. Sync Expenses
-          const mappedExpenses = curExpenses.map(e => ({
-            id: e.id, 
-            category: e.category || 'Boshqa', 
+          // 6. Sync Expenses (Harajatlar)
+          const mappedExpenses = ensureUniquePayload(curExpenses, 'EXP', e => ({
+            id: e.id,
+            category: e.category || 'Boshqa',
             description: e.description || '',
-            amount: Number(e.amount || 0), 
-            recipient: e.recipient || '', 
+            amount: Number(e.amount || 0),
+            recipient: e.recipient || '',
             date: formatIsoDateSafe(e.date),
-            month: e.month, 
+            month: e.month,
             type: e.type || 'Markaz'
           }));
-          const { error: eErr } = await supabase.from('expenses').upsert(mappedExpenses);
-          if (eErr) throw new Error("Harajatlarni yuklashda xato: " + eErr.message);
+          await safeChunkedUpsert('expenses', mappedExpenses);
 
-          // 6. Sync Staff
-          const mappedStaff = curStaff.map(st => ({
-            id: st.id, 
-            name: st.name, 
-            phone: st.phone || '', 
+          // 7. Sync Staff
+          const mappedStaff = ensureUniquePayload(curStaff, 'STF', st => ({
+            id: st.id,
+            name: st.name,
+            phone: st.phone || '',
             role: st.role || 'teacher',
-            position: st.position || 'Ustoz', 
+            position: st.position || 'Ustoz',
             percent: Number(st.percent || 0),
-            fixed_salary: Number(st.fixedSalary || 0), 
+            fixed_salary: Number(st.fixedSalary || 0),
             joined_date: formatIsoDateSafe(st.joinedDate),
             status: st.status || 'active'
           }));
-          try {
-            const { error: stErr } = await supabase.from('staff').upsert(mappedStaff);
-            if (stErr) console.warn("Xodimlarni yuklashda ogohlantirish:", stErr.message);
-          } catch(ste) { console.warn("Staff sync notice:", ste); }
+          try { await safeChunkedUpsert('staff', mappedStaff); } catch(ste) { console.warn('Staff sync notice:', ste); }
 
           setSupabaseConfig(prev => ({ ...prev, isConnected: true }));
           showToast("Barcha ma'lumotlar Supabase bulutiga avtomatik saqlandi! ☁️✅");
