@@ -192,7 +192,10 @@ export function parsePaymentsData(rows: any[][], oy: MonthName): Payment[] {
     const row = rows[i];
     if (!row || row.length === 0) continue;
 
-    const ifo = cleanText(row[0] || row[1]);
+    let ifo = cleanText(row[0]);
+    if ((/^\d+$/.test(ifo) || !ifo) && row[1]) {
+      ifo = cleanText(row[1]);
+    }
     // Jami, Hisobot, Total, yoki bo'sh qatorlarni chetlab o'tish
     if (!ifo || ifo.toLowerCase().startsWith('jami') || ifo.toLowerCase().startsWith('total') || ifo.toLowerCase().startsWith('hisobot') || ifo.toLowerCase().startsWith('i.f.o')) {
       continue;
