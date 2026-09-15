@@ -402,13 +402,13 @@
       return num;
     };
 
-    const parseExcelDateInBrowser = (val, defaultYear = 2026) => {
-      if (val === null || val === undefined || val === '') return null;
-      if (val instanceof Date && !isNaN(val.getTime())) {
-        return val.toISOString().split('T')[0];
-      }
-      if (typeof val === 'number' || (typeof val === 'string' && /^\d{4,6}(\.\d+)?$/.test(val.trim()))) {
-        const serial = typeof val === 'number' ? val : parseFloat(val.trim());
+    const formatIsoDateSafe = (val, defaultYear = 2026) => {
+      if (!val) return getTodayInputFormat();
+      let str = String(val).trim();
+
+      // Excel serial date (e.g. 46143)
+      if (typeof val === 'number' || /^\d{4,6}(\.\d+)?$/.test(str)) {
+        const serial = typeof val === 'number' ? val : parseFloat(str);
         const utcDays = Math.floor(serial - 25569);
         const dateObj = new Date(utcDays * 86400 * 1000);
         if (!isNaN(dateObj.getTime())) {
@@ -418,56 +418,78 @@
           return `${y}-${m}-${d}`;
         }
       }
-      const str = String(val).trim();
-      
-      // E.g. '9-Jun', '23-Jun', '18-Jun', '11-Jul', '5-May'
+
+      // 1. Agar YYYY-MM-DD yoki YYYY-DD-MM (masalan 2026-13-05 yoki 2026-05-13)
+      const ymd = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+      if (ymd) {
+        let y = parseInt(ymd[1], 10);
+        let m = parseInt(ymd[2], 10);
+        let d = parseInt(ymd[3], 10);
+        // Agar oy 12 dan katta bo'lsa va kun 12 dan kichik bo'lsa, o'rinlari almashgan:
+        if (m > 12 && d <= 12) {
+          const t = m;
+          m = d;
+          d = t;
+        }
+        if (m < 1 || m > 12) m = 5;
+        if (d < 1 || d > 31) d = 1;
+        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      }
+
+      // 2. Agar DD-MM-YYYY yoki MM-DD-YYYY yoki DD.MM.YY (masalan 13.05.2026 yoki 05/13/2026)
+      const dmy = str.match(/^(\d{1,2})[-/.,](\d{1,2})[-/.,](\d{2,4})/);
+      if (dmy) {
+        let p1 = parseInt(dmy[1], 10);
+        let p2 = parseInt(dmy[2], 10);
+        let y = dmy[3];
+        if (y.length === 2) y = '20' + y;
+        let numY = parseInt(y, 10);
+
+        let m, d;
+        if (p1 > 12 && p2 <= 12) {
+          d = p1; m = p2;
+        } else if (p2 > 12 && p1 <= 12) {
+          d = p2; m = p1;
+        } else if (str.includes('/') && p1 <= 12 && numY > 2000) {
+          m = p1; d = p2;
+        } else {
+          d = p1; m = p2;
+        }
+
+        if (m < 1 || m > 12) m = 5;
+        if (d < 1 || d > 31) d = 1;
+        return `${numY}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      }
+
+      // 3. Matnli oylar: '5-May', '13-May', '9-Jun'
       const monthNamesShort = {
-        'jan': '01', 'yan': '01',
-        'feb': '02', 'fev': '02',
-        'mar': '03',
-        'apr': '04',
-        'may': '05',
-        'jun': '06', 'iyun': '06',
-        'jul': '07', 'iyul': '07',
-        'aug': '08', 'avg': '08',
-        'sep': '09', 'sen': '09',
-        'oct': '10', 'okt': '10',
-        'nov': '11', 'noy': '11',
-        'dec': '12', 'dek': '12'
+        'jan': '01', 'yan': '01', 'feb': '02', 'fev': '02', 'mar': '03',
+        'apr': '04', 'may': '05', 'jun': '06', 'iyun': '06', 'jul': '07',
+        'iyul': '07', 'aug': '08', 'avg': '08', 'sep': '09', 'sen': '09',
+        'oct': '10', 'okt': '10', 'nov': '11', 'noy': '11', 'dec': '12', 'dek': '12'
       };
       const namedMatch = str.match(/^(\d{1,2})[-/ ]([a-zA-Z]{3,4})([-/ ](\d{2,4}))?$/);
       if (namedMatch) {
-        const d = namedMatch[1].padStart(2, '0');
+        const d = parseInt(namedMatch[1], 10);
         const mName = namedMatch[2].toLowerCase();
-        const m = monthNamesShort[mName] || '06';
+        const m = parseInt(monthNamesShort[mName] || '5', 10);
         let y = namedMatch[4] || defaultYear;
         if (String(y).length === 2) y = '20' + y;
-        return `${y}-${m}-${d}`;
+        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       }
 
-      // E.g. '11,08,26' or '09.07.26' (DD.MM.YY) or '5/1/2026' (M/D/YYYY)
-      const sepMatch = str.match(/^(\d{1,2})[,./](\d{1,2})[,./](\d{2,4})/);
-      if (sepMatch) {
-        let [_, p1, p2, p3] = sepMatch;
-        let day = p1;
-        let month = p2;
-        let year = p3;
-        if (year.length === 2) year = '20' + year;
-        if (str.includes('/') && parseInt(p1) <= 12 && parseInt(p3) > 2000) {
-          month = p1.padStart(2, '0');
-          day = p2.padStart(2, '0');
-        } else {
-          day = p1.padStart(2, '0');
-          month = p2.padStart(2, '0');
-        }
-        return `${year}-${month}-${day}`;
-      }
-
+      // Standart Date
       const parsed = new Date(str);
       if (!isNaN(parsed.getTime())) {
         return parsed.toISOString().split('T')[0];
       }
-      return null;
+
+      return getTodayInputFormat();
+    };
+
+    const parseExcelDateInBrowser = (val, defaultYear = 2026) => {
+      if (val === null || val === undefined || val === '') return null;
+      return formatIsoDateSafe(val, defaultYear);
     };
 
     const normalizeName = (name) => {
@@ -1036,28 +1058,45 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         return saved ? JSON.parse(saved) : DEFAULT_GROUPS;
       });
 
-      // Students State (Each student added once, has random ID)
+      // Students State (Each student added once, has random ID) - Sanalar formatIsoDateSafe orqali qat'iy tozalanadi
       const [students, setStudents] = useState(() => {
         const saved = localStorage.getItem('edufinance_students_v1');
-        return saved ? JSON.parse(saved) : DEFAULT_STUDENTS;
+        const list = saved ? JSON.parse(saved) : DEFAULT_STUDENTS;
+        return list.map(s => ({
+          ...s,
+          joinedDate: formatIsoDateSafe(s.joinedDate)
+        }));
       });
 
       // Payments State
       const [payments, setPayments] = useState(() => {
         const saved = localStorage.getItem('edufinance_p_v6') || localStorage.getItem('edufinance_p_v5');
-        return saved ? JSON.parse(saved) : DEFAULT_PAYMENTS;
+        const list = saved ? JSON.parse(saved) : DEFAULT_PAYMENTS;
+        return list.map(p => ({
+          ...p,
+          paymentDate: formatIsoDateSafe(p.paymentDate),
+          paymentDate2: p.paymentDate2 ? formatIsoDateSafe(p.paymentDate2) : null
+        }));
       });
 
       // Expenses State
       const [expenses, setExpenses] = useState(() => {
         const saved = localStorage.getItem('edufinance_e_v6') || localStorage.getItem('edufinance_e_v5');
-        return saved ? JSON.parse(saved) : DEFAULT_EXPENSES;
+        const list = saved ? JSON.parse(saved) : DEFAULT_EXPENSES;
+        return list.map(e => ({
+          ...e,
+          date: formatIsoDateSafe(e.date)
+        }));
       });
 
       // Staff State (Ustozlar & Boshqa xodimlar)
       const [staff, setStaff] = useState(() => {
         const saved = localStorage.getItem('edufinance_staff_v1');
-        return saved ? JSON.parse(saved) : DEFAULT_STAFF;
+        const list = saved ? JSON.parse(saved) : DEFAULT_STAFF;
+        return list.map(st => ({
+          ...st,
+          joinedDate: formatIsoDateSafe(st.joinedDate)
+        }));
       });
       const [staffFilter, setStaffFilter] = useState('all'); // 'all' | 'teachers' | 'staff'
       const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
@@ -2183,6 +2222,19 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           setExcelImportSummary(summaryObj);
           setIsExcelImportModalOpen(true);
           showToast(`"${fileName}" fayli ${targetMonth} oyiga muvaffaqiyatli tahlil qilinib yuklandi! 📊✅ (Yangi talabalar: ${newStudentsCount}, Baza bilan mos tushganlar: ${matchedStudentsCount})`);
+
+          // Supabase-ga avtomatik tarzda barcha yuklangan ma'lumotlarni yuborish (Auto-push to Supabase)
+          if (supabase) {
+            handleSyncToSupabase({ silent: false }, {
+              groups: updatedGroups,
+              users: users,
+              students: updatedStudents,
+              months: updatedMonths,
+              payments: updatedPayments,
+              expenses: updatedExpenses,
+              staff: updatedStaff
+            });
+          }
         } catch (err) {
           console.error("Excel import xatosi:", err);
           alert("Excel faylni o'qishda xatolik yuz berdi: " + err.message);
@@ -2192,8 +2244,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         }
       };
 
-      // Supabase Push (Upload All Data to Supabase)
-      const handleSyncToSupabase = async (opts = {}) => {
+      // Supabase Push (Upload All Data to Supabase - avtomatik yoki qo'lda)
+      const handleSyncToSupabase = async (opts = {}, customData = null) => {
         const isSilent = opts && opts.silent;
         if (!supabase) {
           if (!isSilent) showToast("Supabase sozlamalari to'liq emas (URL yoki Anon Key xato)!");
@@ -2201,12 +2253,20 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         }
         setIsSyncing(true);
         try {
+          const curGroups = (customData && customData.groups) || groups;
+          const curUsers = (customData && customData.users) || users;
+          const curStudents = (customData && customData.students) || students;
+          const curMonths = (customData && customData.months) || months;
+          const curPayments = (customData && customData.payments) || payments;
+          const curExpenses = (customData && customData.expenses) || expenses;
+          const curStaff = (customData && customData.staff) || staff;
+
           // 1. Sync Groups
-          const mappedGroups = groups.map(g => ({
-            id: g.id, name: g.name, category: g.category, fee: g.fee,
-            teacher: g.teacher, days: g.days, room: g.room
+          const mappedGroups = curGroups.map(g => ({
+            id: g.id, name: g.name, category: g.category || 'Dasturlash', fee: Number(g.fee || 0),
+            teacher: g.teacher || '', days: g.days || '', room: g.room || ''
           }));
-          const mappedUsers = users.map(u => ({
+          const mappedUsers = curUsers.map(u => ({
             id: u.id, username: u.username, password: u.password,
             full_name: u.fullName, role: u.role || 'admin', phone: u.phone || ''
           }));
@@ -2215,46 +2275,75 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           const { error: gErr } = await supabase.from('groups').upsert(mappedGroups);
           if (gErr) throw new Error("Guruhlarni yuklashda xato: " + gErr.message);
 
-          // 2. Sync Students
-          const mappedStudents = students.map(s => ({
-            id: s.id, name: s.name, phone: s.phone, parent_phone: s.parentPhone,
-            "group": s.group, monthly_fee: s.monthlyFee, status: s.status, joined_date: s.joinedDate
+          // 2. Sync Students (Barcha sanalar formatIsoDateSafe orqali qat'iy tekshiriladi)
+          const mappedStudents = curStudents.map(s => ({
+            id: s.id, 
+            name: s.name, 
+            phone: s.phone || '', 
+            parent_phone: s.parentPhone || '',
+            "group": s.group || 'Asosiy guruh', 
+            monthly_fee: Number(s.monthlyFee || 0), 
+            status: s.status || 'active', 
+            joined_date: formatIsoDateSafe(s.joinedDate)
           }));
           const { error: sErr } = await supabase.from('students').upsert(mappedStudents);
           if (sErr) throw new Error("Studentlarni yuklashda xato: " + sErr.message);
 
           // 3. Sync Months
-          const mappedMonths = months.map(m => ({ name: m }));
+          const mappedMonths = curMonths.map(m => ({ name: m }));
           const { error: mErr } = await supabase.from('months').upsert(mappedMonths);
           if (mErr) throw new Error("Oylarni yuklashda xato: " + mErr.message);
 
           // 4. Sync Payments
-          const mappedPayments = payments.map(p => ({
-            id: p.id, student_id: p.studentId || null, student_name: p.studentName,
-            phone_student: p.phoneStudent, phone_parent: p.phoneParent,
-            oylik_tolov: p.oylikTolov, naqd: p.naqd, click: p.click, payment_date: p.paymentDate,
-            naqd2: p.naqd2 || 0, click2: p.click2 || 0, payment_date2: p.paymentDate2 || null,
-            month: p.month, payment_type: p.paymentType, "group": p.group, note: p.note,
-            is_3month_payment: p.is3MonthPayment || false, is_prepaid: p.isPrepaid || false,
-            bitta_toliq_summa: p.bittaToliqSumma || 0, depozit_balansi: p.depozitBalansi || 0
+          const mappedPayments = curPayments.map(p => ({
+            id: p.id, 
+            student_id: p.studentId || null, 
+            student_name: p.studentName,
+            phone_student: p.phoneStudent || '', 
+            phone_parent: p.phoneParent || '',
+            oylik_tolov: Number(p.oylikTolov || 0), 
+            naqd: Number(p.naqd || 0), 
+            click: Number(p.click || 0), 
+            payment_date: formatIsoDateSafe(p.paymentDate),
+            naqd2: Number(p.naqd2 || 0), 
+            click2: Number(p.click2 || 0), 
+            payment_date2: p.paymentDate2 ? formatIsoDateSafe(p.paymentDate2) : null,
+            month: p.month, 
+            payment_type: p.paymentType || 'Naqd', 
+            "group": p.group || 'Asosiy guruh', 
+            note: p.note || '',
+            is_3month_payment: Boolean(p.is3MonthPayment), 
+            is_prepaid: Boolean(p.isPrepaid),
+            bitta_toliq_summa: Number(p.bittaToliqSumma || 0), 
+            depozit_balansi: Number(p.depozitBalansi || 0)
           }));
           const { error: pErr } = await supabase.from('payments').upsert(mappedPayments);
           if (pErr) throw new Error("To'lovlarni yuklashda xato: " + pErr.message);
 
           // 5. Sync Expenses
-          const mappedExpenses = expenses.map(e => ({
-            id: e.id, category: e.category, description: e.description,
-            amount: e.amount, recipient: e.recipient, date: e.date,
-            month: e.month, type: e.type
+          const mappedExpenses = curExpenses.map(e => ({
+            id: e.id, 
+            category: e.category || 'Boshqa', 
+            description: e.description || '',
+            amount: Number(e.amount || 0), 
+            recipient: e.recipient || '', 
+            date: formatIsoDateSafe(e.date),
+            month: e.month, 
+            type: e.type || 'Markaz'
           }));
           const { error: eErr } = await supabase.from('expenses').upsert(mappedExpenses);
           if (eErr) throw new Error("Harajatlarni yuklashda xato: " + eErr.message);
 
-          // 6. Sync Staff (Ustozlar & Xodimlar)
-          const mappedStaff = staff.map(st => ({
-            id: st.id, name: st.name, phone: st.phone, role: st.role,
-            position: st.position, percent: Number(st.percent || 0),
-            fixed_salary: Number(st.fixedSalary || 0), joined_date: st.joinedDate,
+          // 6. Sync Staff
+          const mappedStaff = curStaff.map(st => ({
+            id: st.id, 
+            name: st.name, 
+            phone: st.phone || '', 
+            role: st.role || 'teacher',
+            position: st.position || 'Ustoz', 
+            percent: Number(st.percent || 0),
+            fixed_salary: Number(st.fixedSalary || 0), 
+            joined_date: formatIsoDateSafe(st.joinedDate),
             status: st.status || 'active'
           }));
           try {
@@ -2263,9 +2352,9 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           } catch(ste) { console.warn("Staff sync notice:", ste); }
 
           setSupabaseConfig(prev => ({ ...prev, isConnected: true }));
-          showToast("Barcha ma'lumotlar Supabase bulutiga muvaffaqiyatli saqlandi! 🚀");
+          showToast("Barcha ma'lumotlar Supabase bulutiga avtomatik saqlandi! ☁️✅");
         } catch (err) {
-          console.error(err);
+          console.error("Supabase sync error:", err);
           if (!isSilent) {
             alert(err.message + "\n\nIltimos, Supabase SQL Editor da RLS ni o'chirish skriptini ishga tushiring:\nALTER TABLE groups DISABLE ROW LEVEL SECURITY;");
           }
