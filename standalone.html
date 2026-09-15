@@ -241,6 +241,69 @@
       return num;
     };
 
+    // Aqlli guruh nomini normalizatsiya qilish (AI -2 -> AI-2, java 10 -> Java-10, FS -4 -> Fullstack-4)
+    const cleanGroupName = (raw) => {
+      if (!raw) return 'Asosiy guruh';
+      let g = String(raw).trim();
+      g = g.replace(/[\(\)\[\]]/g, ' ').replace(/\s+/g, ' ').trim();
+      g = g.replace(/([A-Za-z]+)\s*-\s*(\d+)/gi, '$1-$2');
+      g = g.replace(/([A-Za-z]+)\s+(\d+)/gi, '$1-$2');
+      if (/^fs-?\d+/i.test(g)) g = g.replace(/^fs-?/i, 'Fullstack-');
+      else if (/^front-?\d+/i.test(g)) g = g.replace(/^front-?/i, 'Frontend-');
+      else if (/^ai-?\d+/i.test(g)) g = g.replace(/^ai-?/i, 'AI-');
+      else if (/^python-?\d+/i.test(g)) g = g.replace(/^python-?/i, 'Python-');
+      else if (/^java-?\d+/i.test(g)) g = g.replace(/^java-?/i, 'Java-');
+      return g.charAt(0).toUpperCase() + g.slice(1);
+    };
+
+    // O'zbek ism-familiyalarini chuqur fonetik va tokenlar bo'yicha tahlil qilish (LIKE & Fuzzy Match)
+    const normalizeToken = (t) => {
+      if (!t) return '';
+      let s = String(t).toLowerCase().replace(/[`'ʻ’ʼ\.\-_]/g, '').trim();
+      if (s.length > 5) {
+        if (s.endsWith('bek')) s = s.slice(0, -3);
+        else if (s.endsWith('jon')) s = s.slice(0, -3);
+        else if (s.endsWith('xon')) s = s.slice(0, -3);
+        else if (s.endsWith('boy')) s = s.slice(0, -3);
+      }
+      if (s.endsWith('yeva') || s.endsWith('ieva')) s = s.slice(0, -4);
+      else if (s.endsWith('yev') || s.endsWith('iev')) s = s.slice(0, -3);
+      else if (s.endsWith('ova') || s.endsWith('eva')) s = s.slice(0, -3);
+      else if (s.endsWith('ov') || s.endsWith('ev')) s = s.slice(0, -2);
+      else if (s.endsWith('zoda') || s.endsWith('zade')) s = s.slice(0, -4);
+      s = s.replace(/kh/g, 'x').replace(/gh/g, 'g').replace(/sh/g, 's').replace(/ch/g, 'c');
+      s = s.replace(/^ish/, 'esh').replace(/^il/, 'el');
+      s = s.replace(/[hxqkg]/g, 'k');
+      s = s.replace(/[aoeiu]/g, '#');
+      return s;
+    };
+
+    const getTokens = (name) => {
+      if (!name) return [];
+      return String(name).trim().split(/\s+/).filter(w => w.length > 1);
+    };
+
+    // Ism-familiya o'rni almashgan (Rajabov Diyorbek <-> Diyorbek Rajabov), harf xatolari va LIKE moslikni tekshirish
+    const isNameMatch = (nameA, nameB) => {
+      if (!nameA || !nameB) return false;
+      const rawA = String(nameA).toLowerCase().replace(/[`'ʻ’ʼ\s]/g, '').trim();
+      const rawB = String(nameB).toLowerCase().replace(/[`'ʻ’ʼ\s]/g, '').trim();
+      if (rawA === rawB) return true;
+      const tokensA = getTokens(nameA);
+      const tokensB = getTokens(nameB);
+      if (tokensA.length === 0 || tokensB.length === 0) return false;
+      const normA = tokensA.map(normalizeToken).filter(Boolean).sort();
+      const normB = tokensB.map(normalizeToken).filter(Boolean).sort();
+      if (normA.join(' ') === normB.join(' ')) return true;
+      if (normA.length >= 2 && normB.length >= 2) {
+        if (normA.every(t => normB.includes(t)) || normB.every(t => normA.includes(t))) return true;
+      }
+      if (rawA.length >= 6 && rawB.length >= 6) {
+        if (rawA.includes(rawB) || rawB.includes(rawA)) return true;
+      }
+      return false;
+    };
+
     // Standard Expense Categories
     const EXPENSE_CATEGORIES = [
       'Founder harajatlari',
@@ -1010,6 +1073,85 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         showToast(`Xush kelibsiz, ${authedUser.fullName}! (${authedUser.role === 'super_admin' ? 'Super Admin' : 'Kichik Admin'})`);
       };
 
+      // BAZADAGI TAKRORLANGAN TALABALAR VA GURUHLARNI TO'LIQ BIRLASHTIRISH VA TOZALASH (1-Click Clean & Merge)
+      const handleDeduplicateStudentsAndGroups = () => {
+        if (students.length === 0) {
+          showToast("Talabalar bazasi bo'sh!");
+          return;
+        }
+
+        const initialStudentCount = students.length;
+        const initialGroupCount = groups.length;
+
+        // 1. Talabalarni aqlli birlashtirish (Ism-familiyasi o'rni almashgan yoki LIKE mos kelganlarni bitta qilish)
+        const canonicalStudents = [];
+        const studentIdRedirectMap = {}; // oldId -> canonicalId
+
+        for (const s of students) {
+          const existing = canonicalStudents.find(cs => isNameMatch(cs.name, s.name) || (cs.phone && s.phone && s.phone.length > 8 && cs.phone.replace(/\D/g, '') === s.phone.replace(/\D/g, '')));
+          if (!existing) {
+            canonicalStudents.push({ ...s, group: cleanGroupName(s.group) });
+            studentIdRedirectMap[s.id] = s.id;
+          } else {
+            studentIdRedirectMap[s.id] = existing.id;
+            // Ma'lumotlarni boyitish
+            if ((!existing.phone || existing.phone === '+998 ') && s.phone && s.phone !== '+998 ') existing.phone = s.phone;
+            if ((!existing.parentPhone || existing.parentPhone === '+998 ') && s.parentPhone && s.parentPhone !== '+998 ') existing.parentPhone = s.parentPhone;
+            if ((!existing.monthlyFee || existing.monthlyFee === 0) && s.monthlyFee > 0) existing.monthlyFee = s.monthlyFee;
+            if (s.name.length > existing.name.length && s.name.includes(' ')) existing.name = formatProperName(s.name);
+          }
+        }
+
+        // 2. Guruhlarni birlashtirish (AI -2 va AI-2 kabilarni bitta guruh qilish)
+        const canonicalGroups = [];
+        const groupNameMap = {}; // oldGroupName -> canonicalGroupName
+
+        for (const g of groups) {
+          const cName = cleanGroupName(g.name);
+          groupNameMap[g.name] = cName;
+          const exGrp = canonicalGroups.find(cg => cg.name.toLowerCase() === cName.toLowerCase());
+          if (!exGrp) {
+            canonicalGroups.push({ ...g, name: cName });
+          } else {
+            if (g.fee > 0 && (!exGrp.fee || exGrp.fee === 0)) exGrp.fee = g.fee;
+            if (g.teacher && (!exGrp.teacher || exGrp.teacher === 'Asosiy Ustoz')) exGrp.teacher = g.teacher;
+          }
+        }
+
+        // 3. To'lovlardagi studentId va group larni yangilash
+        const updatedPaymentsList = payments.map(p => {
+          const targetStudentId = studentIdRedirectMap[p.studentId] || p.studentId;
+          const canonicalStu = canonicalStudents.find(cs => cs.id === targetStudentId || isNameMatch(cs.name, p.studentName));
+          return {
+            ...p,
+            studentId: canonicalStu ? canonicalStu.id : targetStudentId,
+            studentName: canonicalStu ? canonicalStu.name : formatProperName(p.studentName),
+            group: groupNameMap[p.group] || cleanGroupName(p.group)
+          };
+        });
+
+        setStudents(canonicalStudents);
+        setGroups(canonicalGroups);
+        setPayments(updatedPaymentsList);
+
+        // Supabase-ga tozalangan holatda saqlash
+        if (supabase) {
+          handleSyncToSupabase({ silent: false }, {
+            groups: canonicalGroups,
+            users: users,
+            students: canonicalStudents,
+            months: months,
+            payments: updatedPaymentsList,
+            expenses: expenses,
+            staff: staff
+          });
+        }
+
+        const mergedStudentsCount = initialStudentCount - canonicalStudents.length;
+        const mergedGroupsCount = initialGroupCount - canonicalGroups.length;
+        showToast(`🧹 Baza tozalandi! ${mergedStudentsCount} ta takrorlangan talaba va ${mergedGroupsCount} ta guruh birlashtirildi! (${canonicalStudents.length} ta unikal talaba qoldi) ✨`);
+      };
+
       const handleLogout = () => {
         if (currentUser) {
           logAdminAction('LOGOUT', 'Tizim', `${currentUser.fullName} (@${currentUser.username}) tizimdan chiqdi`);
@@ -1469,7 +1611,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 const oylikTolov = sumMay > 0 ? sumMay : (sumIyun > 0 ? sumIyun : 750000);
 
                 // Student deduplication
-                let existingStudent = updatedStudents.find(s => normalizeName(s.name) === norm);
+                let existingStudent = updatedStudents.find(s => isNameMatch(s.name, rawName) || (studentPhone && s.phone && studentPhone.length > 7 && s.phone.includes(studentPhone.replace(/\D/g, ''))));
                 const assignedGroup = existingStudent && existingStudent.group ? existingStudent.group : 'Asosiy guruh';
 
                 if (!existingStudent) {
@@ -1686,7 +1828,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 const is3Month = (totalPaid >= oylikTolov * 2) || rowFullText.toLowerCase().includes('3 oylik');
 
                 // Student deduplication (BAZADA BOR BO'LGAN TALABANI ANIQLASH)
-                let existingStudent = updatedStudents.find(s => normalizeName(s.name) === norm);
+                let existingStudent = updatedStudents.find(s => isNameMatch(s.name, rawName) || (studentPhone && s.phone && studentPhone.length > 7 && s.phone.includes(studentPhone.replace(/\D/g, ''))));
                 if (!existingStudent) {
                   existingStudent = {
                     id: generateStudentId(),
