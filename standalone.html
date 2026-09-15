@@ -1561,16 +1561,36 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
               for (let c = 0; c < 15; c++) {
                 const hText = `${hRow[c] || ''} ${subHRow[c] || ''}`.toLowerCase();
-                if (hText.includes('i.f.o') || hText.includes('f.i.o') || hText.includes("o'quvchi") || hText.includes("o`quvchi") || hText.includes('talaba') || (hText.includes('ism') && !hText.includes("ta'sischi") && !hText.includes("tasischi"))) colName = c;
-                else if (hText.includes('oilasiniki') || hText.includes('oila')) colParentPhone = c;
-                else if (hText.includes("o'ziniki") || hText.includes('oziniki')) colStudentPhone = c;
-                else if (hText.includes("oylik to'lov") || hText.includes('oylik tolov') || hText.includes("oylik to`lov")) colOylik = c;
-                else if (hText.includes('naxt') || hText.includes('naqd')) colNaxt = c;
-                else if (hText.includes('clisk') || hText.includes('click')) colClick = c;
-                else if (hText.includes('qoldiq')) colQoldiq = c;
-                else if (hText.includes('1 to') || (hText.includes('sana') && colDate1 === -1)) colDate1 = c;
-                else if (hText.includes('2 to')) colDate2 = c;
-                else if (hText.includes('yo‘nalish') || hText.includes('yonalish') || hText.includes('yo`nalishi') || hText.includes('guruh') || hText.includes('gurux')) colGroup = c;
+                if (hText.includes('i.f.o') || hText.includes('f.i.o') || hText.includes("o'quvchi") || hText.includes("o`quvchi") || hText.includes('talaba') || (hText.includes('ism') && !hText.includes("ta'sischi") && !hText.includes("tasischi"))) {
+                  if (colName === -1) colName = c;
+                }
+                else if (hText.includes('oilasiniki') || hText.includes('oila')) {
+                  if (colParentPhone === -1) colParentPhone = c;
+                }
+                else if (hText.includes("o'ziniki") || hText.includes('oziniki')) {
+                  if (colStudentPhone === -1) colStudentPhone = c;
+                }
+                else if (hText.includes("oylik to'lov") || hText.includes('oylik tolov') || hText.includes("oylik to`lov")) {
+                  if (colOylik === -1) colOylik = c;
+                }
+                else if (hText.includes('naxt') || hText.includes('naqd')) {
+                  if (colNaxt === -1) colNaxt = c;
+                }
+                else if (hText.includes('clisk') || hText.includes('click')) {
+                  if (colClick === -1) colClick = c;
+                }
+                else if (hText.includes('qoldiq')) {
+                  if (colQoldiq === -1) colQoldiq = c;
+                }
+                else if (hText.includes('1 to') || (hText.includes('sana') && colDate1 === -1)) {
+                  if (colDate1 === -1) colDate1 = c;
+                }
+                else if (hText.includes('2 to')) {
+                  if (colDate2 === -1) colDate2 = c;
+                }
+                else if (hText.includes('yo‘nalish') || hText.includes('yonalish') || hText.includes('yo`nalishi') || hText.includes('guruh') || hText.includes('gurux')) {
+                  if (colGroup === -1) colGroup = c;
+                }
               }
 
               if (colName === -1) {
@@ -2102,22 +2122,57 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 newExpensesCount++;
               }
             } else {
-              // Avgust, Iyul, Iyun: Side-by-side xarajatlar
+              // Avgust, Iyul, Iyun: Side-by-side xarajatlar va pastdagi Founder bloki
+              let inFounderBlock = false;
+
               for (let i = 2; i < eRows.length; i++) {
                 const r = eRows[i];
-                if (!r) continue;
+                if (!r || r.length === 0) continue;
 
-                // 1-qism: Xodim maoshi (Chap tomon, Cols 0-10)
+                const rowStr = r.map(c => String(c || '').toLowerCase()).join(' ');
+                if (rowStr.includes('founder xarajat') || rowStr.includes("ta'sischi") || rowStr.includes('tasischi')) {
+                  inFounderBlock = true;
+                  continue;
+                }
+
+                if (inFounderBlock) {
+                  // Founder xarajatlari bloki (sana, F.I.O, izox, summa)
+                  const fSana = r[0];
+                  const fIsm = String(r[1] || '').trim();
+                  const fIzox = String(r[2] || '').trim();
+                  const fSum = parseUzbekMoney(r[5] || r[4] || r[6] || r[7]);
+                  if (fIsm && !fIsm.toLowerCase().startsWith('f.i.o') && !fIsm.toLowerCase().startsWith('sana') && !fIsm.toLowerCase().startsWith('jami') && fSum > 0) {
+                    const sanaVal = parseExcelDateInBrowser(fSana) || getTodayInputFormat();
+                    updatedExpenses.push({
+                      id: makeExpId(),
+                      category: 'Founder xarajatlari',
+                      description: `Founder xarajati: ${fIsm} - ${fIzox || 'Qarz/Dividend'}`,
+                      amount: fSum,
+                      recipient: fIsm,
+                      date: sanaVal,
+                      month: targetMonth,
+                      type: 'Founder'
+                    });
+                    totalImportedExpense += fSum;
+                    newExpensesCount++;
+                  }
+                  continue;
+                }
+
+                // 1-qism: Xodim maoshi (Chap tomon, Cols 0-9)
                 const staffName = r[0] ? String(r[0]).trim() : '';
-                if (staffName && staffName.length > 3 && !staffName.toLowerCase().startsWith('f.i.o') && !staffName.toLowerCase().startsWith('jami')) {
+                if (staffName && staffName.length > 3 && !staffName.toLowerCase().startsWith('f.i.o') && !staffName.toLowerCase().startsWith('jami') && !staffName.toLowerCase().startsWith('sana') && !staffName.toLowerCase().startsWith('markaz')) {
                   const normStaff = normalizeName(staffName);
                   const oyligi = parseUzbekMoney(r[2]);
-                  const avans = parseUzbekMoney(r[6] || r[5] || r[4]);
-                  let oshxona = parseUzbekMoney(r[8] || r[7] || r[6]);
+                  const avans = parseUzbekMoney(r[4]);
+                  const qarz = parseUzbekMoney(r[5]);
+                  const shuOy = parseUzbekMoney(r[6]);
+                  let oshxona = parseUzbekMoney(r[7]);
                   if (oshxona === 0 && kitchenTotals[normStaff]) {
                     oshxona = kitchenTotals[normStaff];
                   }
-                  const jami = parseUzbekMoney(r[10] || r[9] || r[8]);
+                  const jami = parseUzbekMoney(r[8] || r[9] || r[10]);
+                  const izoh = r[3] ? String(r[3]).trim() : '';
 
                   let staffObj = updatedStaff.find(s => normalizeName(s.name) === normStaff);
                   if (!staffObj) {
@@ -2125,46 +2180,61 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       id: makeStfId(),
                       name: formatProperName(staffName),
                       phone: '+998 ',
-                      role: staffName.toLowerCase().includes('direktor') ? 'staff' : 'teacher',
-                      position: staffName.toLowerCase().includes('direktor') ? 'Direktor' : 'Ustoz',
+                      role: staffName.toLowerCase().includes('direktor') || staffName.toLowerCase().includes('admin') || staffName.toLowerCase().includes('farrosh') ? 'staff' : 'teacher',
+                      position: izoh || (staffName.toLowerCase().includes('direktor') ? 'Direktor' : (staffName.toLowerCase().includes('admin') ? 'Administrator' : 'Ustoz')),
                       percent: 40,
-                      fixedSalary: oyligi,
+                      fixedSalary: oyligi > 0 ? oyligi : 0,
                       joinedDate: getTodayInputFormat(),
                       status: 'active'
                     };
                     updatedStaff.push(staffObj);
                     newStaffCount++;
+                  } else {
+                    if (oyligi > 0) staffObj.fixedSalary = oyligi;
+                    if (izoh) staffObj.position = izoh;
                   }
 
-                  if (jami > 0) {
+                  const payAmount = jami > 0 ? jami : (avans > 0 ? avans : (shuOy > 0 ? shuOy : oyligi));
+                  if (payAmount > 0) {
+                    let desc = `Xodim maoshi: ${staffObj.name}`;
+                    const details = [];
+                    if (avans > 0) details.push(`Avans: -${formatMoney(avans)}`);
+                    if (oshxona > 0) details.push(`Oshxona: -${formatMoney(oshxona)}`);
+                    if (qarz > 0) details.push(`Qarz: ${formatMoney(qarz)}`);
+                    if (details.length > 0) desc += ` (${details.join(', ')})`;
+                    if (izoh) desc += ` [${izoh}]`;
+
                     updatedExpenses.push({
                       id: makeExpId(),
-                      category: staffName.toLowerCase().includes('direktor') || staffName.toLowerCase().includes('admin') ? 'Xodimlar oyligi' : 'Oqituvchilar oyligi',
-                      description: `Xodim maoshi: ${staffObj.name} (Avans: -${formatMoney(avans)}, Oshxona: -${formatMoney(oshxona)})`,
-                      amount: jami,
+                      category: staffName.toLowerCase().includes('direktor') || staffName.toLowerCase().includes('admin') || staffName.toLowerCase().includes('farrosh') ? 'Xodimlar oyligi' : "O'qituvchilar oyligi",
+                      description: desc,
+                      amount: payAmount,
                       recipient: staffObj.name,
                       date: getTodayInputFormat(),
                       month: targetMonth,
                       type: 'Kadrlar'
                     });
-                    totalImportedExpense += jami;
+                    totalImportedExpense += payAmount;
                     newExpensesCount++;
                   }
                 }
 
-                // 2-qism: Markaz xarajati (O'ng tomon, Cols 11-22)
-                const expDateRaw = r[11] || r[12] || r[10];
-                const expKimga = r[12] || r[13] || r[11];
-                const expIzox = r[13] || r[15] || r[14];
-                const expSum = parseUzbekMoney(r[16] || r[19] || r[14] || r[17]);
+                // 2-qism: Markaz xarajati (O'ng tomon, Cols 10-16)
+                const expDateRaw = r[10] || r[11];
+                const expKimga = r[11] || r[12];
+                const expIzox = r[12] || r[13];
+                const shuOySum = parseUzbekMoney(r[14]);
+                const oldingiSum = parseUzbekMoney(r[13]);
+                const keyingiSum = parseUzbekMoney(r[15]);
+                const expSum = (shuOySum > 0 ? shuOySum : 0) + (oldingiSum > 0 ? oldingiSum : 0) + (keyingiSum > 0 ? keyingiSum : 0) || parseUzbekMoney(r[16] || r[17]);
 
                 if (expKimga && typeof expKimga === 'string' && expKimga.trim().length > 2 && 
-                    !expKimga.toLowerCase().startsWith('f.i.o') && !expKimga.toLowerCase().startsWith('markaz xarajat') && expSum > 0) {
+                    !expKimga.toLowerCase().startsWith('f.i.o') && !expKimga.toLowerCase().startsWith('markaz xarajat') && !expKimga.toLowerCase().startsWith('jami') && expSum > 0) {
                   const sana = parseExcelDateInBrowser(expDateRaw) || getTodayInputFormat();
                   updatedExpenses.push({
                     id: makeExpId(),
                     category: mapExpenseCategory(String(expKimga).trim(), String(expIzox || '').trim()),
-                    description: `${String(expKimga).trim()} - ${String(expIzox || '').trim()}`,
+                    description: expIzox ? `${String(expKimga).trim()} - ${String(expIzox).trim()}` : String(expKimga).trim(),
                     amount: expSum,
                     recipient: String(expKimga).trim(),
                     date: sana,
@@ -2187,13 +2257,13 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               const rText = r.map(c => String(c || '')).join(' ').toLowerCase();
               if (rText.includes('no') && rText.includes('summa')) continue;
 
-              const chiqimSum = parseUzbekMoney(r[5] || r[6]);
-              const chiqimIzox = String(r[6] || r[7] || '').trim();
-              if (chiqimSum > 0) {
+              const chiqimSum = parseUzbekMoney(r[5] || r[4]);
+              const chiqimIzox = String(r[6] || r[5] || '').trim();
+              if (chiqimIzox && !chiqimIzox.toLowerCase().includes('jmai') && !chiqimIzox.toLowerCase().includes('jami') && !chiqimIzox.toLowerCase().includes('kartada') && chiqimSum > 0 && chiqimSum < 10000000) {
                 updatedExpenses.push({
                   id: makeExpId(),
                   category: chiqimIzox.toLowerCase().includes('arenda') ? 'Kommunal va Ijara' : 'Boshqa',
-                  description: `Click yechib olish: ${chiqimIzox}`,
+                  description: `Click chiqim: ${chiqimIzox}`,
                   amount: chiqimSum,
                   recipient: 'Click Kassa',
                   date: parseExcelDateInBrowser(r[4]) || getTodayInputFormat(),
