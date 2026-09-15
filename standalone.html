@@ -571,22 +571,6 @@
       }).join(' ');
     };
 
-    const cleanGroupName = (raw) => {
-      if (!raw) return 'Asosiy guruh';
-      let s = String(raw).trim();
-      const m = s.match(/^(ai|python|fullstack|frontend|backend|java|foundation|dasturlash)[\s\-_]*0*(\d+)$/i);
-      if (m) {
-        const prefix = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
-        const num = parseInt(m[2], 10);
-        if (prefix.toLowerCase() === 'ai') return 'AI-' + num;
-        return prefix + '-' + num;
-      }
-      if (s.length > 2 && s.length < 25 && !/(xarajat|founder|olinishi|berdim|jami|hisobot|qoldiq|naqd|click|oylik)/i.test(s)) {
-        return s.charAt(0).toUpperCase() + s.slice(1);
-      }
-      return 'Asosiy guruh';
-    };
-
     const isNotReceivedText = (text) => {
       const lower = String(text || '').toLowerCase();
       return lower.includes('man olmaganman') ||
