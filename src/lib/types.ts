@@ -183,6 +183,20 @@ export interface CashFlowReport {
 }
 
 /**
+ * 11. Founder xarajatlari modeli
+ */
+export interface FounderExpense {
+  id: string;
+  sana: string;
+  founder_name: string;
+  maqsad: string;
+  izoh: string;
+  summa: number;
+  turi: PaymentMethod;
+  oy: MonthName;
+}
+
+/**
  * To'liq parsed oy to'plami
  */
 export interface ParsedMonthData {
@@ -190,6 +204,7 @@ export interface ParsedMonthData {
   payments: Payment[];
   salaryTransactions: SalaryTransaction[];
   centerExpenses: CenterExpense[];
+  founderExpenses?: FounderExpense[];
   kitchenMonthly: KitchenStaffMonthly[];
   clickLedger: ClickLedgerEntry[];
   summary?: MonthlyProfitReport;

@@ -1129,6 +1129,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         joinedDate: getTodayInputFormat()
       });
       const [studentSearchTerm, setStudentSearchTerm] = useState('');
+      const [expenseTypeFilter, setExpenseTypeFilter] = useState('all'); // 'all' | 'Founder' | 'Kadrlar' | 'Markaz'
       const [studentFilterGroup, setStudentFilterGroup] = useState('all');
 
       // Group Modal
@@ -3034,6 +3035,17 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       const prevMonthExpenses = prevMonth ? expenses.filter(e => e.month === prevMonth) : [];
 
       const totalExpenses = currentMonthExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+      const staffExpensesTotal = currentMonthExpenses.filter(e => e.type === 'Kadrlar' || String(e.category || '').toLowerCase().includes('oylik')).reduce((acc, e) => acc + Number(e.amount || 0), 0);
+      const centerExpensesTotal = currentMonthExpenses.filter(e => e.type === 'Markaz' || e.type === 'Fixed' || e.type === 'Marketing').reduce((acc, e) => acc + Number(e.amount || 0), 0);
+      const founderExpensesTotal = currentMonthExpenses.filter(e => e.type === 'Founder' || String(e.category || '').toLowerCase().includes('founder')).reduce((acc, e) => acc + Number(e.amount || 0), 0);
+
+      const displayedExpenses = currentMonthExpenses.filter(e => {
+        if (expenseTypeFilter === 'all') return true;
+        if (expenseTypeFilter === 'Founder') return e.type === 'Founder' || String(e.category || '').toLowerCase().includes('founder');
+        if (expenseTypeFilter === 'Kadrlar') return e.type === 'Kadrlar' || String(e.category || '').toLowerCase().includes('oylik');
+        if (expenseTypeFilter === 'Markaz') return e.type === 'Markaz' || e.type === 'Fixed' || e.type === 'Marketing';
+        return true;
+      });
       const prevTotalExpenses = prevMonthExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
       const sofFoyda = totalRevenue - totalExpenses;
       const kassoviyRazriv = totalCash - totalExpenses;
@@ -3244,6 +3256,16 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               >
                 <span>👔</span> + Xodim
               </button>
+
+              {/* Shablon Yuklab Olish (Template Download) */}
+              <a
+                href="./EduFinance_Moliya_Shabloni.xlsx"
+                download="EduFinance_Moliya_Shabloni.xlsx"
+                className="px-3.5 py-2.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/40 hover:border-purple-500/60 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shadow-purple-500/10"
+                title="Standart Excel hisobot shablonini yuklab olish - to'lovlar, ustozlar oyligi, markaz va founder xarajatlari uchun"
+              >
+                <span>📋</span> Shablon (Excel)
+              </a>
 
               {/* Excel Import (Yuklash) */}
               <label
@@ -3967,19 +3989,55 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             {activeTab === 'harajat' && (
               <div className="space-y-5">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-                  {Object.entries(expenseByCategory).slice(0, 3).map(([cat, amt]) => (
-                    <div key={cat} className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-rose-500/30 shadow-lg relative overflow-hidden group hover:border-rose-500/50 transition-all">
-                      <div className="text-[10px] text-rose-400 font-extrabold uppercase tracking-wider truncate">{cat}</div>
-                      <div className="text-xl font-black text-rose-400 mt-1 font-mono tabular-nums">{formatMoney(amt)}</div>
-                    </div>
+                  <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-blue-500/30 shadow-lg relative overflow-hidden group hover:border-blue-500/50 transition-all">
+                    <div className="text-[10px] text-blue-400 font-extrabold uppercase tracking-wider">👔 O'qituvchi & Kadrlar</div>
+                    <div className="text-xl font-black text-blue-400 mt-1 font-mono tabular-nums">{formatMoney(staffExpensesTotal)}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Ustozlar maoshi va avanslar</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-amber-500/30 shadow-lg relative overflow-hidden group hover:border-amber-500/50 transition-all">
+                    <div className="text-[10px] text-amber-400 font-extrabold uppercase tracking-wider">🏢 Markaz Xarajatlari</div>
+                    <div className="text-xl font-black text-amber-400 mt-1 font-mono tabular-nums">{formatMoney(centerExpensesTotal)}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Ijara, svet, internet, target</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-purple-500/30 shadow-lg relative overflow-hidden group hover:border-purple-500/50 transition-all">
+                    <div className="text-[10px] text-purple-400 font-extrabold uppercase tracking-wider">👑 Founder Xarajatlari</div>
+                    <div className="text-xl font-black text-purple-400 mt-1 font-mono tabular-nums">{formatMoney(founderExpensesTotal)}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Ta'sischilar ulushi va dividentlar</div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-rose-500/30 shadow-lg relative overflow-hidden group hover:border-rose-500/50 transition-all">
+                    <div className="text-[10px] text-rose-400 font-extrabold uppercase tracking-wider">🔴 JAMI CHIQIM</div>
+                    <div className="text-xl font-black text-rose-400 mt-1 font-mono tabular-nums">{formatMoney(totalExpenses)}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">{selectedMonth === 'all' ? 'Barcha oylar' : selectedMonth}</div>
+                  </div>
+                </div>
+
+                {/* Filtr Tugmalari (Barchasi, Founder, O'qituvchilar, Markaz) */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {[
+                    { id: 'all', label: 'Barchasi', count: currentMonthExpenses.length, icon: '🔘' },
+                    { id: 'Founder', label: 'Founder Xarajatlari', count: currentMonthExpenses.filter(e => e.type === 'Founder' || String(e.category||'').toLowerCase().includes('founder')).length, icon: '👑' },
+                    { id: 'Kadrlar', label: 'O\'qituvchilar Oyligi', count: currentMonthExpenses.filter(e => e.type === 'Kadrlar' || String(e.category||'').toLowerCase().includes('oylik')).length, icon: '👔' },
+                    { id: 'Markaz', label: 'Markaz Xarajatlari', count: currentMonthExpenses.filter(e => e.type === 'Markaz' || e.type === 'Fixed' || e.type === 'Marketing').length, icon: '🏢' }
+                  ].map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => setExpenseTypeFilter(f.id)}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer flex items-center gap-2 ${
+                        expenseTypeFilter === f.id
+                          ? 'bg-rose-500 text-white border-rose-400 shadow-md shadow-rose-500/20 ring-1 ring-rose-400'
+                          : 'bg-slate-900/60 hover:bg-slate-800 text-slate-300 border-white/[0.08]'
+                      }`}
+                    >
+                      <span>{f.icon}</span>
+                      <span>{f.label}</span>
+                      <span className="px-1.5 py-0.2 rounded-full bg-black/40 text-[10px] font-mono">
+                        {f.count}
+                      </span>
+                    </button>
                   ))}
-                  {prevMonth && prevTotalExpenses > 0 && (
-                    <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] shadow-lg">
-                      <div className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">↩ {prevMonth}</div>
-                      <div className="text-xl font-black text-slate-300 mt-1 font-mono tabular-nums">{formatMoney(prevTotalExpenses)}</div>
-                      <div className="text-[10px] text-slate-500">O'tgan oy harajati</div>
-                    </div>
-                  )}
                 </div>
 
                 <div className="rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] overflow-hidden shadow-2xl">
@@ -4017,11 +4075,12 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         {currentMonthExpenses.length === 0 && (
                           <tr><td colSpan={9} className="p-12 text-center text-slate-500 text-xs">Hozircha harajat yozuvlari yo'q</td></tr>
                         )}
-                        {currentMonthExpenses.map((exp) => (
+                        {displayedExpenses.map((exp) => (
                           <tr key={exp.id} className="hover:bg-white/[0.03] transition-colors">
                             <td className="p-3.5 pl-4 font-mono text-slate-400 whitespace-nowrap text-[11px]">{exp.id}</td>
                             <td className="p-3.5 whitespace-nowrap">
                               <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                                exp.type === 'Founder' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 font-black shadow-sm shadow-purple-500/20' :
                                 exp.type === 'Kadrlar' ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' :
                                 exp.type === 'Marketing' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
                                 exp.type === 'Fixed' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
@@ -4035,6 +4094,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                             <td className="p-3.5 text-slate-400 whitespace-nowrap text-[11px] font-mono">{exp.month}</td>
                             <td className="p-3.5 whitespace-nowrap">
                               <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
+                                exp.type === 'Founder' ? 'bg-purple-500/30 text-purple-200 border border-purple-500/40' :
                                 exp.type === 'Fixed' ? 'bg-amber-500/20 text-amber-300' :
                                 exp.type === 'Kadrlar' ? 'bg-blue-500/20 text-blue-300' :
                                 exp.type === 'Marketing' ? 'bg-purple-500/20 text-purple-300' :
@@ -6612,6 +6672,25 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       className="w-full px-3 py-2 rounded-xl bg-slate-950/80 text-xs text-white border border-white/[0.1] focus:outline-none focus:border-emerald-500 placeholder:text-slate-500 font-medium"
                     />
                   </div>
+                </div>
+
+                {/* Standart Shablon Taklifi */}
+                <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-between gap-3 shadow-inner">
+                  <div>
+                    <div className="text-xs font-bold text-purple-200 flex items-center gap-1.5">
+                      <span>✨</span> Standart Excel Shablon kerakmi?
+                    </div>
+                    <div className="text-[11px] text-purple-300/80 leading-tight mt-0.5">
+                      To'lovlar, Ustozlar oyligi, Markaz va Founder xarajatlari andozasi
+                    </div>
+                  </div>
+                  <a
+                    href="./EduFinance_Moliya_Shabloni.xlsx"
+                    download="EduFinance_Moliya_Shabloni.xlsx"
+                    className="px-3 py-1.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-slate-950 font-extrabold text-xs transition-all flex items-center gap-1 whitespace-nowrap shadow-md shadow-purple-500/20 cursor-pointer"
+                  >
+                    📥 Shablon
+                  </a>
                 </div>
 
                 {/* Listlar haqida qisqacha ma'lumot */}
