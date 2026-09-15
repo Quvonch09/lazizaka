@@ -1269,15 +1269,38 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         setIsExcelLoading(true);
 
         try {
-          // Listlarni aniqlash
+          // Listlarni aniqlash (Standart shablon va eski oylar uchun)
           const paySheetName = sheetNames.find(s => {
             const l = s.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
-            return l.includes("to'lov") || l.includes('tolov') || l.includes('may');
+            return l.includes("to'lov") || l.includes('tolov') || l.includes('may') || l.includes('talaba');
           });
-          const expSheetName = sheetNames.find(s => {
+
+          // 1. O'qituvchilar / Kadrlar oyligi varag'i (Shablonda alohida varaq)
+          const salarySheetName = sheetNames.find(s => {
             const l = s.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
-            return l.includes('xarajat') || l.includes('rasxod') || l.includes('chiqim');
+            return l.includes("o'qituvchi") || l.includes("oqituvchi") || l.includes("ustoz") || l.includes("kadr") || 
+                   ((l.includes("oylig") || l.includes("maosh") || l.includes("oylik")) && !l.includes("to'lov") && !l.includes("tolov"));
           });
+
+          // 2. Markaz xarajatlari varag'i (Shablonda alohida varaq)
+          const centerExpSheetName = sheetNames.find(s => {
+            const l = s.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
+            return (l.includes("markaz") && (l.includes("xarajat") || l.includes("chiqim") || l.includes("rasxod"))) ||
+                   (l.includes("operatsion") && l.includes("xarajat"));
+          });
+
+          // 3. Founder xarajatlari varag'i (Shablonda alohida varaq)
+          const founderExpSheetName = sheetNames.find(s => {
+            const l = s.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
+            return l.includes("founder") || l.includes("ta'sischi") || l.includes("tasischi") || l.includes("dividend");
+          });
+
+          // 4. Umumiy / Eski xarajatlar varag'i (Avgust xarajat, Xarajatlar, Rasxod)
+          const legacyExpSheetName = sheetNames.find(s => {
+            const l = s.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
+            return !l.includes("founder") && !l.includes("ta'sischi") && !l.includes("tasischi") && (l.includes('xarajat') || l.includes('rasxod') || l.includes('chiqim'));
+          });
+
           const kitSheetName = sheetNames.find(s => {
             const l = s.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
             return l.includes('oshxona') || l.includes('obed');
@@ -1288,7 +1311,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           });
 
           const paymentsSheet = paySheetName ? workbook.Sheets[paySheetName] : (sheetNames[0] ? workbook.Sheets[sheetNames[0]] : null);
-          const expensesSheet = expSheetName ? workbook.Sheets[expSheetName] : (sheetNames[1] ? workbook.Sheets[sheetNames[1]] : null);
+          const salarySheet = salarySheetName ? workbook.Sheets[salarySheetName] : null;
+          const centerExpSheet = centerExpSheetName ? workbook.Sheets[centerExpSheetName] : null;
+          const founderExpSheet = founderExpSheetName ? workbook.Sheets[founderExpSheetName] : null;
+          const expensesSheet = legacyExpSheetName ? workbook.Sheets[legacyExpSheetName] : (sheetNames[1] ? workbook.Sheets[sheetNames[1]] : null);
           const kitchenSheet = kitSheetName ? workbook.Sheets[kitSheetName] : null;
           const clickSheet = clkSheetName ? workbook.Sheets[clkSheetName] : null;
 
@@ -1669,10 +1695,250 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             }
           }
 
-          // C) Chiqim moduli: Xodimlar va Markaz xarajatlari (Ikkala tomonni to'liq o'qish)
-          if (expensesSheet) {
+          // C) Chiqim modullari: Xodimlar, Markaz va Founder xarajatlari
+          // ===================================================================
+          const isStandardOrModular = Boolean(salarySheet || founderExpSheet || centerExpSheet);
+
+          // 1. O'QITUVCHILAR VA XODIMLAR OYLIGI VARAG'I (Salary Sheet)
+          if (salarySheet) {
+            const sRows = window.XLSX.utils.sheet_to_json(salarySheet, { header: 1, raw: false });
+            let sHeaderIdx = -1;
+            let colStaffName = 1;
+            let colRole = 2;
+            let colStavka = 3;
+            let colFoiz = 4;
+            let colAvans = 5;
+            let colQarz = 6;
+            let colOshxona = 7;
+            let colJami = 8;
+            let colSana = 9;
+            let colIzoh = 10;
+
+            for (let r = 0; r < Math.min(sRows.length, 6); r++) {
+              const row = (sRows[r] || []).map(c => String(c || '').toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim());
+              if (row.some(c => c.includes('xodim') || c.includes('f.i.o') || c.includes('ustoz') || c.includes('maosh') || c.includes('stavka'))) {
+                sHeaderIdx = r;
+                row.forEach((cell, idx) => {
+                  if (cell.includes('xodim') || cell.includes('f.i.o') || cell.includes('ism') || cell.includes('ustoz')) colStaffName = idx;
+                  else if (cell.includes('lavozim') || cell.includes("yo'nalish")) colRole = idx;
+                  else if (cell.includes('stavka') || cell.includes('asosiy') || (cell.includes('oylik') && !cell.includes("qo'lga"))) colStavka = idx;
+                  else if (cell.includes('ulush') || cell.includes('foiz')) colFoiz = idx;
+                  else if (cell.includes('avans')) colAvans = idx;
+                  else if (cell.includes('qarz') || cell.includes('oldingi')) colQarz = idx;
+                  else if (cell.includes('oshxona') || cell.includes('tushlik')) colOshxona = idx;
+                  else if (cell.includes("qo'lga") || cell.includes('jami') || cell.includes('olishi') || cell.includes('tegadigan')) colJami = idx;
+                  else if (cell.includes('sana')) colSana = idx;
+                  else if (cell.includes('izoh') || cell.includes('tafsilot')) colIzoh = idx;
+                });
+                break;
+              }
+            }
+
+            const sStart = sHeaderIdx >= 0 ? sHeaderIdx + 1 : 1;
+            for (let i = sStart; i < sRows.length; i++) {
+              const r = sRows[i];
+              if (!r || r.length === 0) continue;
+
+              let rawName = String(r[colStaffName] || '').trim();
+              if ((/^\d+$/.test(rawName) || !rawName) && r[colStaffName + 1]) {
+                rawName = String(r[colStaffName + 1]).trim();
+              }
+              if (!rawName || rawName.toLowerCase().startsWith('jami') || rawName.toLowerCase().startsWith('total') || rawName.toLowerCase().startsWith('xodim') || rawName.length < 3) continue;
+
+              const roleStr = String(r[colRole] || (rawName.toLowerCase().includes('direktor') ? 'Direktor' : 'Ustoz')).trim();
+              const stavka = parseUzbekMoney(r[colStavka]);
+              const rawFoiz = String(r[colFoiz] || '');
+              let foizVal = rawFoiz.includes('%') ? parseFloat(rawFoiz.replace('%', '')) : (parseFloat(rawFoiz) > 0 && parseFloat(rawFoiz) < 1 ? parseFloat(rawFoiz) * 100 : parseFloat(rawFoiz) || 0);
+              const avans = parseUzbekMoney(r[colAvans]);
+              const qarz = parseUzbekMoney(r[colQarz]);
+              let oshxona = parseUzbekMoney(r[colOshxona]);
+              const normStaff = normalizeName(rawName);
+              if (oshxona === 0 && kitchenTotals[normStaff]) {
+                oshxona = kitchenTotals[normStaff];
+              }
+              let jami = parseUzbekMoney(r[colJami]);
+              if (jami === 0 && (stavka > 0 || avans > 0)) {
+                jami = Math.max(0, stavka + qarz - avans - oshxona);
+              }
+              const sanaRaw = r[colSana];
+              const dateVal = parseExcelDateInBrowser(sanaRaw) || getTodayInputFormat();
+              const izoh = String(r[colIzoh] || '').trim();
+
+              // Xodimlarni bazaga yangilash / qo'shish
+              let staffObj = updatedStaff.find(s => normalizeName(s.name) === normStaff);
+              if (!staffObj) {
+                staffObj = {
+                  id: 'STF-' + Math.floor(100 + Math.random() * 900),
+                  name: formatProperName(rawName),
+                  phone: '+998 ',
+                  role: roleStr.toLowerCase().includes('direktor') || roleStr.toLowerCase().includes('admin') || roleStr.toLowerCase().includes('farrosh') || roleStr.toLowerCase().includes('xodim') ? 'staff' : 'teacher',
+                  position: roleStr,
+                  percent: foizVal > 0 ? foizVal : 40,
+                  fixedSalary: stavka > 0 ? stavka : 0,
+                  joinedDate: getTodayInputFormat(),
+                  status: 'active'
+                };
+                updatedStaff.push(staffObj);
+                newStaffCount++;
+              } else {
+                if (stavka > 0) staffObj.fixedSalary = stavka;
+                if (roleStr) staffObj.position = roleStr;
+                if (foizVal > 0) staffObj.percent = foizVal;
+              }
+
+              const payAmount = jami > 0 ? jami : (avans > 0 ? avans : stavka);
+              if (payAmount > 0) {
+                let desc = `Xodim maoshi: ${staffObj.name}`;
+                const details = [];
+                if (avans > 0) details.push(`Avans: -${formatMoney(avans)}`);
+                if (oshxona > 0) details.push(`Oshxona: -${formatMoney(oshxona)}`);
+                if (qarz !== 0) details.push(`Qarz: ${formatMoney(qarz)}`);
+                if (details.length > 0) desc += ` (${details.join(', ')})`;
+                if (izoh) desc += ` [${izoh}]`;
+
+                updatedExpenses.push({
+                  id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                  category: roleStr.toLowerCase().includes('direktor') || roleStr.toLowerCase().includes('admin') || roleStr.toLowerCase().includes('xodim') || roleStr.toLowerCase().includes('farrosh') ? 'Xodimlar oyligi' : "O'qituvchilar oyligi",
+                  description: desc,
+                  amount: payAmount,
+                  recipient: staffObj.name,
+                  date: dateVal,
+                  month: targetMonth,
+                  type: 'Kadrlar'
+                });
+                totalImportedExpense += payAmount;
+                newExpensesCount++;
+              }
+            }
+          }
+
+          // 2. MARKAZ OPERATSION XARAJATLARI VARAG'I (Center Expenses Sheet)
+          const targetCenterSheet = centerExpSheet || (isStandardOrModular ? expensesSheet : null);
+          if (targetCenterSheet) {
+            const cRows = window.XLSX.utils.sheet_to_json(targetCenterSheet, { header: 1, raw: false });
+            let cHeaderIdx = -1;
+            let colCSana = 1;
+            let colCKat = 2;
+            let colCKimga = 3;
+            let colCIzoh = 4;
+            let colCSumma = 5;
+            let colCTur = 6;
+
+            for (let r = 0; r < Math.min(cRows.length, 6); r++) {
+              const row = (cRows[r] || []).map(c => String(c || '').toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim());
+              if (row.some(c => c.includes('kategoriya') || c.includes('kimga') || c.includes('qayerga') || c.includes('summa') || c.includes('xarajat'))) {
+                cHeaderIdx = r;
+                row.forEach((cell, idx) => {
+                  if (cell.includes('sana')) colCSana = idx;
+                  else if (cell.includes('kategoriya')) colCKat = idx;
+                  else if (cell.includes('kimga') || cell.includes('qayerga')) colCKimga = idx;
+                  else if (cell.includes('izoh') || cell.includes('tavsif') || cell.includes('nima') || cell.includes('uchun')) colCIzoh = idx;
+                  else if (cell.includes('summa') || cell.includes('narx') || cell.includes('miqdor')) colCSumma = idx;
+                  else if (cell.includes('turi') || cell.includes('tur')) colCTur = idx;
+                });
+                break;
+              }
+            }
+
+            const cStart = cHeaderIdx >= 0 ? cHeaderIdx + 1 : 1;
+            for (let i = cStart; i < cRows.length; i++) {
+              const r = cRows[i];
+              if (!r || r.length === 0) continue;
+              const sumVal = parseUzbekMoney(r[colCSumma]);
+              if (sumVal <= 0) continue;
+
+              const rawKimga = String(r[colCKimga] || '').trim();
+              if (rawKimga.toLowerCase().startsWith('jami') || rawKimga.toLowerCase().startsWith('total')) continue;
+              const rawKat = String(r[colCKat] || '').trim();
+              const rawIzoh = String(r[colCIzoh] || '').trim();
+              const rawSana = r[colCSana];
+              const dateVal = parseExcelDateInBrowser(rawSana) || getTodayInputFormat();
+              const turStr = String(r[colCTur] || 'Naqd').toLowerCase();
+              const isClick = turStr.includes('click') || turStr.includes('karta');
+
+              const kimgaText = rawKimga || rawKat || 'Markaz xarajati';
+              const descText = rawIzoh ? `${kimgaText} - ${rawIzoh}` : kimgaText;
+
+              updatedExpenses.push({
+                id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                category: rawKat ? rawKat : mapExpenseCategory(kimgaText, rawIzoh),
+                description: descText,
+                amount: sumVal,
+                recipient: kimgaText,
+                date: dateVal,
+                month: targetMonth,
+                type: 'Markaz'
+              });
+              totalImportedExpense += sumVal;
+              newExpensesCount++;
+            }
+          }
+
+          // 3. FOUNDER XARAJATLARI VARAG'I (Founder Expenses Sheet)
+          if (founderExpSheet) {
+            const fRows = window.XLSX.utils.sheet_to_json(founderExpSheet, { header: 1, raw: false });
+            let fHeaderIdx = -1;
+            let colFSana = 1;
+            let colFIsm = 2;
+            let colFMaqsad = 3;
+            let colFIzoh = 4;
+            let colFSumma = 5;
+            let colFTur = 6;
+
+            for (let r = 0; r < Math.min(fRows.length, 6); r++) {
+              const row = (fRows[r] || []).map(c => String(c || '').toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim());
+              if (row.some(c => c.includes("ta'sischi") || c.includes('tasischi') || c.includes('founder') || c.includes('maqsad') || c.includes('summa'))) {
+                fHeaderIdx = r;
+                row.forEach((cell, idx) => {
+                  if (cell.includes('sana')) colFSana = idx;
+                  else if (cell.includes("ta'sischi") || cell.includes('tasischi') || cell.includes('founder') || cell.includes('ism') || cell.includes('kimga')) colFIsm = idx;
+                  else if (cell.includes('maqsad') || cell.includes('kategoriya')) colFMaqsad = idx;
+                  else if (cell.includes('izoh') || cell.includes('tafsilot')) colFIzoh = idx;
+                  else if (cell.includes('summa') || cell.includes('miqdor')) colFSumma = idx;
+                  else if (cell.includes('tur')) colFTur = idx;
+                });
+                break;
+              }
+            }
+
+            const fStart = fHeaderIdx >= 0 ? fHeaderIdx + 1 : 1;
+            for (let i = fStart; i < fRows.length; i++) {
+              const r = fRows[i];
+              if (!r || r.length === 0) continue;
+              const sumVal = parseUzbekMoney(r[colFSumma]);
+              if (sumVal <= 0) continue;
+
+              const rawIsm = String(r[colFIsm] || '').trim();
+              if (rawIsm.toLowerCase().startsWith('jami') || rawIsm.toLowerCase().startsWith('total')) continue;
+              const rawMaqsad = String(r[colFMaqsad] || '').trim();
+              const rawIzoh = String(r[colFIzoh] || '').trim();
+              const rawSana = r[colFSana];
+              const dateVal = parseExcelDateInBrowser(rawSana) || getTodayInputFormat();
+              const turStr = String(r[colFTur] || 'Naqd').toLowerCase();
+              const isClick = turStr.includes('click') || turStr.includes('karta');
+
+              const ismText = rawIsm || 'Founder';
+              const descText = rawIzoh || rawMaqsad ? `${ismText} - ${rawIzoh || rawMaqsad}` : `Founder xarajati: ${ismText}`;
+
+              updatedExpenses.push({
+                id: 'EXP-' + Math.floor(1000 + Math.random() * 9000),
+                category: 'Founder xarajatlari',
+                description: descText,
+                amount: sumVal,
+                recipient: ismText,
+                date: dateVal,
+                month: targetMonth,
+                type: 'Founder'
+              });
+              totalImportedExpense += sumVal;
+              newExpensesCount++;
+            }
+          }
+
+          // 4. ESKI / LEGACY FORMAT (May oyi yoki yonma-yon side-by-side format)
+          if (!isStandardOrModular && expensesSheet) {
             const eRows = window.XLSX.utils.sheet_to_json(expensesSheet, { header: 1, raw: false });
-            const isMayRasxod = fileName.toLowerCase().includes('may') || (expSheetName && expSheetName.toLowerCase().includes('rasxod'));
+            const isMayRasxod = fileName.toLowerCase().includes('may') || (legacyExpSheetName && legacyExpSheetName.toLowerCase().includes('rasxod'));
 
             if (isMayRasxod) {
               for (let i = 4; i < eRows.length; i++) {

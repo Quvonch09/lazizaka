@@ -561,24 +561,232 @@ export function parseClickLedgerData(rows: any[][], oy: MonthName): ClickLedgerE
  * - Oshxona / Obed listi
  * - Clisk / Click listi
  */
+/**
+ * D) STANDART SHABLON MODULLARI: Alohida varaqlar uchun parserlar
+ */
+export function parseModularSalaryData(rows: any[][], oy: MonthName, kitchenTotals: Record<string, number> = {}): SalaryTransaction[] {
+  const salaryTransactions: SalaryTransaction[] = [];
+  if (!rows || rows.length === 0) return salaryTransactions;
+
+  let headerIdx = -1;
+  let colStaffName = 1;
+  let colRole = 2;
+  let colStavka = 3;
+  let colFoiz = 4;
+  let colAvans = 5;
+  let colQarz = 6;
+  let colOshxona = 7;
+  let colJami = 8;
+  let colIzoh = 10;
+
+  for (let r = 0; r < Math.min(rows.length, 6); r++) {
+    const row = (rows[r] || []).map(c => cleanText(c).toLowerCase());
+    if (row.some(c => c.includes('xodim') || c.includes('f.i.o') || c.includes('ustoz') || c.includes('maosh') || c.includes('stavka'))) {
+      headerIdx = r;
+      row.forEach((cell, idx) => {
+        if (cell.includes('xodim') || cell.includes('f.i.o') || cell.includes('ism') || cell.includes('ustoz')) colStaffName = idx;
+        else if (cell.includes('lavozim') || cell.includes("yo'nalish")) colRole = idx;
+        else if (cell.includes('stavka') || cell.includes('asosiy') || (cell.includes('oylik') && !cell.includes("qo'lga"))) colStavka = idx;
+        else if (cell.includes('ulush') || cell.includes('foiz')) colFoiz = idx;
+        else if (cell.includes('avans')) colAvans = idx;
+        else if (cell.includes('qarz') || cell.includes('oldingi')) colQarz = idx;
+        else if (cell.includes('oshxona') || cell.includes('tushlik')) colOshxona = idx;
+        else if (cell.includes("qo'lga") || cell.includes('jami') || cell.includes('olishi') || cell.includes('tegadigan')) colJami = idx;
+        else if (cell.includes('izoh') || cell.includes('tafsilot')) colIzoh = idx;
+      });
+      break;
+    }
+  }
+
+  const startIdx = headerIdx >= 0 ? headerIdx + 1 : 1;
+  for (let i = startIdx; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.length === 0) continue;
+
+    let fio = cleanText(r[colStaffName]);
+    if ((/^\d+$/.test(fio) || !fio) && r[colStaffName + 1]) {
+      fio = cleanText(r[colStaffName + 1]);
+    }
+    if (!fio || fio.toLowerCase().startsWith('jami') || fio.toLowerCase().startsWith('total') || fio.length < 3) continue;
+
+    const oylik = parseNumber(r[colStavka]);
+    let ulush = 0;
+    const rawFoiz = String(r[colFoiz] || '');
+    if (rawFoiz.includes('%')) ulush = parseFloat(rawFoiz.replace('%', '')) / 100;
+    else ulush = parseNumber(rawFoiz);
+
+    const avans = parseNumber(r[colAvans]);
+    const oldingiQarz = parseNumber(r[colQarz]);
+    let oshxona = parseNumber(r[colOshxona]);
+    if (oshxona === 0 && kitchenTotals[fio.toLowerCase()]) {
+      oshxona = kitchenTotals[fio.toLowerCase()];
+    }
+    let jami = parseNumber(r[colJami]);
+    if (jami === 0 && (oylik > 0 || avans > 0)) {
+      jami = Math.max(0, oylik + oldingiQarz - avans - oshxona);
+    }
+
+    salaryTransactions.push({
+      id: generateId('sal'),
+      fio,
+      oy,
+      oylik,
+      ulush_foizi: ulush,
+      avans,
+      oldingi_qarz: oldingiQarz,
+      shu_oy_uchun: 0,
+      oshxona,
+      yakuniy_jami: jami > 0 ? jami : (avans > 0 ? avans : oylik),
+      izoh: cleanText(r[colIzoh] || '')
+    });
+  }
+
+  return salaryTransactions;
+}
+
+export function parseModularCenterData(rows: any[][], oy: MonthName): CenterExpense[] {
+  const centerExpenses: CenterExpense[] = [];
+  if (!rows || rows.length === 0) return centerExpenses;
+
+  let headerIdx = -1;
+  let colSana = 1;
+  let colKat = 2;
+  let colKimga = 3;
+  let colIzoh = 4;
+  let colSumma = 5;
+  let colTur = 6;
+
+  for (let r = 0; r < Math.min(rows.length, 6); r++) {
+    const row = (rows[r] || []).map(c => cleanText(c).toLowerCase());
+    if (row.some(c => c.includes('kategoriya') || c.includes('kimga') || c.includes('qayerga') || c.includes('summa'))) {
+      headerIdx = r;
+      row.forEach((cell, idx) => {
+        if (cell.includes('sana')) colSana = idx;
+        else if (cell.includes('kategoriya')) colKat = idx;
+        else if (cell.includes('kimga') || cell.includes('qayerga')) colKimga = idx;
+        else if (cell.includes('izoh') || cell.includes('tavsif') || cell.includes('nima')) colIzoh = idx;
+        else if (cell.includes('summa') || cell.includes('narx')) colSumma = idx;
+        else if (cell.includes('turi') || cell.includes('tur')) colTur = idx;
+      });
+      break;
+    }
+  }
+
+  const startIdx = headerIdx >= 0 ? headerIdx + 1 : 1;
+  for (let i = startIdx; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.length === 0) continue;
+    const summa = parseNumber(r[colSumma]);
+    if (summa <= 0) continue;
+
+    const kimga = cleanText(r[colKimga] || r[colKat] || 'Markaz xarajati');
+    if (kimga.toLowerCase().startsWith('jami') || kimga.toLowerCase().startsWith('total')) continue;
+    const izoh = cleanText(r[colIzoh] || '');
+    const sana = parseExcelDate(r[colSana]) || new Date().toISOString().split('T')[0];
+    const turStr = cleanText(r[colTur] || 'naqd').toLowerCase();
+    const isClick = turStr.includes('click') || turStr.includes('karta');
+
+    centerExpenses.push({
+      id: generateId('exp_center'),
+      sana,
+      raw_sana: r[colSana],
+      kimga,
+      izoh,
+      summa,
+      turi: isClick ? 'click' : 'naqd',
+      oy_turi: 'shu',
+      oy
+    });
+  }
+
+  return centerExpenses;
+}
+
+export function parseModularFounderData(rows: any[][], oy: MonthName): FounderExpense[] {
+  const founderExpenses: FounderExpense[] = [];
+  if (!rows || rows.length === 0) return founderExpenses;
+
+  let headerIdx = -1;
+  let colSana = 1;
+  let colIsm = 2;
+  let colMaqsad = 3;
+  let colIzoh = 4;
+  let colSumma = 5;
+  let colTur = 6;
+
+  for (let r = 0; r < Math.min(rows.length, 6); r++) {
+    const row = (rows[r] || []).map(c => cleanText(c).toLowerCase());
+    if (row.some(c => c.includes("ta'sischi") || c.includes('tasischi') || c.includes('founder') || c.includes('maqsad') || c.includes('summa'))) {
+      headerIdx = r;
+      row.forEach((cell, idx) => {
+        if (cell.includes('sana')) colSana = idx;
+        else if (cell.includes("ta'sischi") || cell.includes('tasischi') || cell.includes('founder') || cell.includes('ism')) colIsm = idx;
+        else if (cell.includes('maqsad') || cell.includes('kategoriya')) colMaqsad = idx;
+        else if (cell.includes('izoh') || cell.includes('tafsilot')) colIzoh = idx;
+        else if (cell.includes('summa') || cell.includes('miqdor')) colSumma = idx;
+        else if (cell.includes('tur')) colTur = idx;
+      });
+      break;
+    }
+  }
+
+  const startIdx = headerIdx >= 0 ? headerIdx + 1 : 1;
+  for (let i = startIdx; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.length === 0) continue;
+    const summa = parseNumber(r[colSumma]);
+    if (summa <= 0) continue;
+
+    const founder_name = cleanText(r[colIsm] || 'Founder');
+    if (founder_name.toLowerCase().startsWith('jami') || founder_name.toLowerCase().startsWith('total')) continue;
+    const maqsad = cleanText(r[colMaqsad] || 'Founder xarajati');
+    const izoh = cleanText(r[colIzoh] || '');
+    const sana = parseExcelDate(r[colSana]) || new Date().toISOString().split('T')[0];
+    const turStr = cleanText(r[colTur] || 'naqd').toLowerCase();
+    const isClick = turStr.includes('click') || turStr.includes('karta');
+
+    founderExpenses.push({
+      id: generateId('exp_founder'),
+      sana,
+      founder_name,
+      maqsad,
+      izoh,
+      summa,
+      turi: isClick ? 'click' : 'naqd',
+      oy
+    });
+  }
+
+  return founderExpenses;
+}
+
 export function parseMonthWorkbook(workbook: XLSX.WorkBook, defaultOy: MonthName): ParsedMonthData {
   const sheetNames = workbook.SheetNames;
 
   let paymentsSheet: XLSX.WorkSheet | null = null;
-  let expensesSheet: XLSX.WorkSheet | null = null;
+  let salarySheet: XLSX.WorkSheet | null = null;
+  let centerExpSheet: XLSX.WorkSheet | null = null;
+  let founderExpSheet: XLSX.WorkSheet | null = null;
+  let legacyExpSheet: XLSX.WorkSheet | null = null;
   let kitchenSheet: XLSX.WorkSheet | null = null;
   let clickSheet: XLSX.WorkSheet | null = null;
 
   // Listlarni avtomatik aniqlash (Heuristic matching)
   for (const name of sheetNames) {
-    const lower = name.toLowerCase();
+    const lower = name.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'");
     if (lower.includes('oshxona') || lower.includes('obed') || lower.includes('ovqat')) {
       kitchenSheet = workbook.Sheets[name];
     } else if (lower.includes('clisk') || lower.includes('click')) {
       clickSheet = workbook.Sheets[name];
-    } else if (lower.includes('xarajat') || lower.includes('chiqim') || lower.includes('rasxod') || lower.includes('maosh')) {
-      expensesSheet = workbook.Sheets[name];
-    } else if (lower.includes("to'lov") || lower.includes('tolov') || lower.includes('kirim') || lower.includes('student')) {
+    } else if (lower.includes("o'qituvchi") || lower.includes('oqituvchi') || lower.includes('ustoz') || ((lower.includes('oylig') || lower.includes('maosh')) && !lower.includes("to'lov"))) {
+      salarySheet = workbook.Sheets[name];
+    } else if (lower.includes('founder') || lower.includes("ta'sischi") || lower.includes('tasischi')) {
+      founderExpSheet = workbook.Sheets[name];
+    } else if (lower.includes('markaz') || (lower.includes('operatsion') && lower.includes('xarajat'))) {
+      centerExpSheet = workbook.Sheets[name];
+    } else if (lower.includes('xarajat') || lower.includes('chiqim') || lower.includes('rasxod')) {
+      legacyExpSheet = workbook.Sheets[name];
+    } else if (lower.includes("to'lov") || lower.includes('tolov') || lower.includes('kirim') || lower.includes('talaba')) {
       paymentsSheet = workbook.Sheets[name];
     }
   }
@@ -586,12 +794,6 @@ export function parseMonthWorkbook(workbook: XLSX.WorkBook, defaultOy: MonthName
   // Agar list nomi bo'yicha aniqlanmasa, tartib bo'yicha oladi
   if (!paymentsSheet && sheetNames.length > 0) {
     paymentsSheet = workbook.Sheets[sheetNames[0]];
-  }
-  if (!expensesSheet && sheetNames.length > 1) {
-    expensesSheet = workbook.Sheets[sheetNames[1]];
-  }
-  if (!kitchenSheet && sheetNames.length > 2) {
-    kitchenSheet = workbook.Sheets[sheetNames[2]];
   }
 
   // 1. Oshxona modulini o'qish
@@ -612,11 +814,32 @@ export function parseMonthWorkbook(workbook: XLSX.WorkBook, defaultOy: MonthName
     payments = parsePaymentsData(payRows, defaultOy);
   }
 
-  // 3. Chiqim modulini o'qish (Oshxona ma'lumotlari bilan bog'langan holda)
+  // 3. Chiqim modullarini o'qish
   let salaryTransactions: SalaryTransaction[] = [];
   let centerExpenses: CenterExpense[] = [];
-  if (expensesSheet) {
-    const expRows = XLSX.utils.sheet_to_json<any[]>(expensesSheet, { header: 1, raw: false });
+  let founderExpenses: FounderExpense[] = [];
+
+  const isModular = Boolean(salarySheet || centerExpSheet || founderExpSheet);
+
+  if (salarySheet) {
+    const sRows = XLSX.utils.sheet_to_json<any[]>(salarySheet, { header: 1, raw: false });
+    salaryTransactions = parseModularSalaryData(sRows, defaultOy, kitchenTotals);
+  }
+
+  const targetCenter = centerExpSheet || (isModular ? legacyExpSheet : null);
+  if (targetCenter) {
+    const cRows = XLSX.utils.sheet_to_json<any[]>(targetCenter, { header: 1, raw: false });
+    centerExpenses = parseModularCenterData(cRows, defaultOy);
+  }
+
+  if (founderExpSheet) {
+    const fRows = XLSX.utils.sheet_to_json<any[]>(founderExpSheet, { header: 1, raw: false });
+    founderExpenses = parseModularFounderData(fRows, defaultOy);
+  }
+
+  // Legacy fallback (birgalikdagi xarajatlar ro'yxati)
+  if (!isModular && legacyExpSheet) {
+    const expRows = XLSX.utils.sheet_to_json<any[]>(legacyExpSheet, { header: 1, raw: false });
     const parsedExp = parseExpensesData(expRows, defaultOy, kitchenTotals);
     salaryTransactions = parsedExp.salaryTransactions;
     centerExpenses = parsedExp.centerExpenses;
@@ -634,6 +857,7 @@ export function parseMonthWorkbook(workbook: XLSX.WorkBook, defaultOy: MonthName
     payments,
     salaryTransactions,
     centerExpenses,
+    founderExpenses,
     kitchenMonthly,
     clickLedger
   };
