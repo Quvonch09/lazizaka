@@ -2161,17 +2161,40 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 // 1-qism: Xodim maoshi (Chap tomon, Cols 0-9)
                 const staffName = r[0] ? String(r[0]).trim() : '';
-                if (staffName && staffName.length > 3 && !staffName.toLowerCase().startsWith('f.i.o') && !staffName.toLowerCase().startsWith('jami') && !staffName.toLowerCase().startsWith('sana') && !staffName.toLowerCase().startsWith('markaz')) {
+                
+                // Agar qator sana bilan boshlansa (masalan 7/14/26) yoki Founder xarajati bo'lsa
+                if (staffName && (staffName.match(/^\d{1,2}[\/.,]/) || (r[1] && ['shahrixon', 'javoxir', 'sardor sayfulloyev'].some(fn => String(r[1]).toLowerCase().includes(fn))))) {
+                  const fSana = staffName.match(/^\d{1,2}[\/.,]/) ? staffName : (r[10] || r[11]);
+                  const fIsm = staffName.match(/^\d{1,2}[\/.,]/) ? String(r[1] || '').trim() : staffName;
+                  const fIzox = staffName.match(/^\d{1,2}[\/.,]/) ? String(r[2] || '').trim() : String(r[2] || r[3] || '').trim();
+                  const fSum = parseUzbekMoney(r[6] || r[5] || r[4] || r[7] || r[8] || r[9]);
+                  if (fIsm && fSum > 0 && !fIsm.toLowerCase().startsWith('f.i.o') && !fIsm.toLowerCase().startsWith('sana') && !fIsm.toLowerCase().startsWith('jami')) {
+                    const sanaVal = parseExcelDateInBrowser(fSana) || getTodayInputFormat();
+                    updatedExpenses.push({
+                      id: makeExpId(),
+                      category: 'Founder harajatlari',
+                      description: `Founder xarajati: ${fIsm} - ${fIzox || 'Dividend/Xarajat'}`,
+                      amount: fSum,
+                      recipient: fIsm,
+                      date: sanaVal,
+                      month: targetMonth,
+                      type: 'Founder'
+                    });
+                    totalImportedExpense += fSum;
+                    newExpensesCount++;
+                  }
+                }
+                else if (staffName && staffName.length > 3 && !staffName.toLowerCase().startsWith('f.i.o') && !staffName.toLowerCase().startsWith('jami') && !staffName.toLowerCase().startsWith('sana') && !staffName.toLowerCase().startsWith('markaz') && !staffName.toLowerCase().startsWith('mani') && !staffName.toLowerCase().startsWith('man ')) {
                   const normStaff = normalizeName(staffName);
                   const oyligi = parseUzbekMoney(r[2]);
-                  const avans = parseUzbekMoney(r[4]);
-                  const qarz = parseUzbekMoney(r[5]);
-                  const shuOy = parseUzbekMoney(r[6]);
-                  let oshxona = parseUzbekMoney(r[7]);
+                  const avans = parseUzbekMoney(r[5] || r[4]);
+                  const qarz = parseUzbekMoney(r[6]);
+                  const shuOy = parseUzbekMoney(r[7] || r[6]);
+                  let oshxona = parseUzbekMoney(r[8] || r[7]);
                   if (oshxona === 0 && kitchenTotals[normStaff]) {
                     oshxona = kitchenTotals[normStaff];
                   }
-                  const jami = parseUzbekMoney(r[8] || r[9] || r[10]);
+                  const jami = parseUzbekMoney(r[9] || r[8] || r[10]);
                   const izoh = r[3] ? String(r[3]).trim() : '';
 
                   let staffObj = updatedStaff.find(s => normalizeName(s.name) === normStaff);
@@ -2219,14 +2242,15 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   }
                 }
 
-                // 2-qism: Markaz xarajati (O'ng tomon, Cols 10-16)
-                const expDateRaw = r[10] || r[11];
-                const expKimga = r[11] || r[12];
-                const expIzox = r[12] || r[13];
-                const shuOySum = parseUzbekMoney(r[14]);
-                const oldingiSum = parseUzbekMoney(r[13]);
+                // 2-qism: Markaz xarajati (O'ng tomon, Cols 10-18)
+                const expDateRaw = r[11] || r[10];
+                const expKimga = r[12] || r[11];
+                const expIzox = r[13] || r[12];
+                const expJami = parseUzbekMoney(r[17]);
+                const shuOySum = parseUzbekMoney(r[16] || r[14]);
+                const oldingiSum = parseUzbekMoney(r[15] || r[13]);
                 const keyingiSum = parseUzbekMoney(r[15]);
-                const expSum = (shuOySum > 0 ? shuOySum : 0) + (oldingiSum > 0 ? oldingiSum : 0) + (keyingiSum > 0 ? keyingiSum : 0) || parseUzbekMoney(r[16] || r[17]);
+                const expSum = expJami > 0 ? expJami : (((shuOySum > 0 ? shuOySum : 0) + (oldingiSum > 0 ? oldingiSum : 0) + (keyingiSum > 0 ? keyingiSum : 0)) || parseUzbekMoney(r[16] || r[14] || r[15]));
 
                 if (expKimga && typeof expKimga === 'string' && expKimga.trim().length > 2 && 
                     !expKimga.toLowerCase().startsWith('f.i.o') && !expKimga.toLowerCase().startsWith('markaz xarajat') && !expKimga.toLowerCase().startsWith('jami') && expSum > 0) {
@@ -3751,97 +3775,13 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             </div>
 
             <div className="flex items-center gap-2.5">
-              {/* Main Quick Action: New Payment */}
-              <button
-                onClick={() => {
-                  setFormData({
-                    studentId: '', studentName: '', phoneStudent: '+998 ', phoneParent: '+998 ',
-                    oylikTolov: 750000, naqd: 0, click: 750000, group: groups[0]?.name || 'Frontend ReactJS (A1)',
-                    paymentDate: getTodayInputFormat(),
-                    month: selectedMonth !== 'all' ? selectedMonth : currentCalMonth,
-                    paymentType: 'Click', note: '', is3MonthPayment: false, bittaToliqSumma: 0, depozitBalansi: 0
-                  });
-                  setStudentQuery('');
-                  setIsModalOpen(true);
-                }}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <span>💳</span> + To'lov Kiritish
-              </button>
-
-              {/* Quick Action: New Expense */}
-              <button
-                onClick={() => {
-                  setExpenseForm(f => ({ ...f, month: selectedMonth !== 'all' ? selectedMonth : currentCalMonth, date: getTodayInputFormat() }));
-                  setIsExpenseModalOpen(true);
-                }}
-                className="px-3.5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:border-rose-500/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <span>−</span> Harajat Kiritish
-              </button>
-
-              {/* Quick Action: Add Student */}
-              <button
-                onClick={() => {
-                  const newId = generateStudentId();
-                  const firstGrp = groups[0] || { name: 'Frontend ReactJS (A1)', fee: 750000 };
-                  setStudentForm({
-                    id: newId,
-                    name: '',
-                    phone: '+998 ',
-                    parentPhone: '+998 ',
-                    group: firstGrp.name,
-                    monthlyFee: firstGrp.fee,
-                    status: 'active',
-                    joinedDate: getTodayInputFormat()
-                  });
-                  setIsStudentModalOpen(true);
-                }}
-                className="px-3.5 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:border-indigo-500/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                title="Yangi o'quvchi qo'shish"
-              >
-                <span>👥</span> + O'quvchi
-              </button>
-
-              {/* Quick Action: Add Staff / Teacher */}
-              <button
-                onClick={() => {
-                  setStaffForm({
-                    id: '',
-                    name: '',
-                    phone: '+998 ',
-                    role: 'teacher',
-                    position: 'Ustoz',
-                    percent: 40,
-                    fixedSalary: 3500000,
-                    status: 'active',
-                    joinedDate: getTodayInputFormat()
-                  });
-                  setIsStaffModalOpen(true);
-                }}
-                className="px-3.5 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:border-amber-500/50 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                title="Yangi ustoz yoki xodim qo'shish"
-              >
-                <span>👔</span> + Xodim
-              </button>
-
-              {/* Shablon Yuklab Olish (Template Download) */}
-              <a
-                href="./EduFinance_Moliya_Shabloni.xlsx"
-                download="EduFinance_Moliya_Shabloni.xlsx"
-                className="px-3.5 py-2.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/40 hover:border-purple-500/60 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shadow-purple-500/10"
-                title="Standart Excel hisobot shablonini yuklab olish - to'lovlar, ustozlar oyligi, markaz va founder xarajatlari uchun"
-              >
-                <span>📋</span> Shablon (Excel)
-              </a>
-
-              {/* Excel Import (Yuklash) */}
+              {/* Asosiy va yagona harakat: Excel Yuklash */}
               <label
-                className={`px-3.5 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 hover:border-emerald-500/60 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shadow-emerald-500/10 ${isExcelLoading ? 'opacity-50 pointer-events-none animate-pulse' : ''}`}
-                title="Excel hisobot faylini yuklash (.xlsx, .xls) - to'lovlar, xarajatlar, oshxona va o'quvchilarni to'liq o'qib bazaga qo'shadi"
+                className={`px-4.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer ${isExcelLoading ? 'opacity-50 pointer-events-none animate-pulse' : ''}`}
+                title="Excel hisobot faylini yuklash (.xlsx, .xls) - to'lovlar, xarajatlar, kadrlar va o'quvchilarni to'liq o'qib hisoblaydi va Supabase-ga avtomatik yuklaydi"
               >
-                <span>{isExcelLoading ? '⏳' : '📤'}</span>
-                <span>{isExcelLoading ? 'Yuklanmoqda...' : 'Excel Yuklash'}</span>
+                <span className="text-base">{isExcelLoading ? '⏳' : '📊'}</span>
+                <span className="tracking-wide">{isExcelLoading ? 'Tahlil qilinmoqda...' : 'Excel Yuklash'}</span>
                 <input
                   type="file"
                   accept=".xlsx, .xls, .csv"
@@ -3849,15 +3789,6 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   className="hidden"
                 />
               </label>
-
-              {/* Excel Export */}
-              <button
-                onClick={() => exportExcelFn(payments, expenses, currentMonth)}
-                className="px-3.5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 border border-white/[0.1] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                title="Excel formatida eksport qilish"
-              >
-                <span>📥</span> Excel
-              </button>
 
               {/* Super Admin Panel Header Shortcut */}
               {isSuperAdmin && (
