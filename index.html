@@ -58,12 +58,34 @@
   <!-- SheetJS (xlsx) for universal Excel parsing -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+  <!-- Google Material Symbols Outlined -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   <!-- Google Fonts: Plus Jakarta Sans, Inter, JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: 400;
+      font-style: normal;
+      font-size: 20px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      -moz-osx-font-smoothing: grayscale;
+      font-feature-settings: 'liga';
+      vertical-align: middle;
+    }
     html, body {
       height: 100%;
       margin: 0;
@@ -133,6 +155,13 @@
       LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid 
     } = window.Recharts || {};
 
+    // Professional Material Symbols Icon Component
+    const Icon = ({ name, className = '', style = {} }) => (
+      <span className={`material-symbols-outlined select-none shrink-0 ${className}`} style={style}>
+        {name}
+      </span>
+    );
+
     // Uzbek Month Names & Auto Calendar System
     const UZ_MONTHS = [
       'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
@@ -140,9 +169,9 @@
     ];
 
     const MONTH_ICONS = {
-      'Yanvar': '❄️', 'Fevral': '🌨️', 'Mart': '🌱', 'Aprel': '🌸',
-      'May': '🌺', 'Iyun': '☀️', 'Iyul': '🏖️', 'Avgust': '🌻',
-      'Sentyabr': '🍂', 'Oktabr': '🍁', 'Noyabr': '🌧️', 'Dekabr': '❄️'
+      'Yanvar': 'calendar_today', 'Fevral': 'calendar_today', 'Mart': 'calendar_today', 'Aprel': 'calendar_today',
+      'May': 'calendar_today', 'Iyun': 'calendar_today', 'Iyul': 'calendar_today', 'Avgust': 'calendar_today',
+      'Sentyabr': 'calendar_today', 'Oktabr': 'calendar_today', 'Noyabr': 'calendar_today', 'Dekabr': 'calendar_today'
     };
 
     const getCurrentMonthString = () => {
@@ -151,9 +180,9 @@
     };
 
     const getMonthIcon = (mStr) => {
-      if (!mStr) return '📅';
+      if (!mStr) return 'calendar_month';
       const mName = mStr.split(' ')[0];
-      return MONTH_ICONS[mName] || '📅';
+      return MONTH_ICONS[mName] || 'calendar_month';
     };
 
     const getNextMonthString = (monthStr) => {
@@ -797,8 +826,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           <div className="w-full max-w-md rounded-3xl bg-slate-900/95 border border-slate-800 p-8 shadow-2xl backdrop-blur-xl relative z-10 space-y-6">
             {/* Brand Header */}
             <div className="text-center space-y-2">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-lg shadow-emerald-500/30 text-3xl mb-1">
-                ⚡
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-900 border border-emerald-500/30 shadow-lg shadow-emerald-500/20 text-emerald-400 mb-1">
+                <Icon name="account_balance_wallet" className="text-3xl" />
               </div>
               <h1 className="text-2xl font-extrabold text-white tracking-tight">EduFinance CRM</h1>
               <p className="text-xs text-slate-400">
@@ -809,7 +838,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             {/* Error message */}
             {errorMsg && (
               <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2">
-                <span>⚠️</span>
+                <Icon name="warning" className="text-base text-rose-400 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
@@ -821,7 +850,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   Login (Foydalanuvchi nomi) *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-slate-500 text-sm">👤</span>
+                  <Icon name="person" className="absolute left-3.5 top-3 text-slate-500 text-sm" />
                   <input
                     type="text"
                     required
@@ -839,7 +868,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   Parol *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-3 text-slate-500 text-sm">🔒</span>
+                  <Icon name="lock" className="absolute left-3.5 top-3 text-slate-500 text-sm" />
                   <input
                     type={showPassword ? "text" : "password"}
                     required
@@ -854,7 +883,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     className="absolute right-3.5 top-2.5 text-slate-400 hover:text-white text-sm"
                     title={showPassword ? "Yashirish" : "Ko'rsatish"}
                   >
-                    {showPassword ? "🙈" : "👁️"}
+                    <Icon name={showPassword ? "visibility_off" : "visibility"} className="text-sm text-slate-400" />
                   </button>
                 </div>
               </div>
@@ -869,7 +898,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   />
                   <span>Meni eslab qol</span>
                 </label>
-                <span className="text-[11px] text-slate-500">🔒 Himoyalangan sessiya</span>
+                <span className="text-[11px] text-slate-500 flex items-center gap-1"><Icon name="lock" className="text-xs" /> Himoyalangan sessiya</span>
               </div>
 
               <button
@@ -890,14 +919,14 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   onClick={() => handleQuickFill('superadmin', 'admin777')}
                   className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-emerald-400 font-mono border border-emerald-500/30 transition-all cursor-pointer flex items-center gap-1"
                 >
-                  <span>👑</span> Super Admin (superadmin / admin777)
+                  <Icon name="shield_person" className="text-xs text-amber-400" /> Super Admin (superadmin / admin777)
                 </button>
                 <button
                   type="button"
                   onClick={() => handleQuickFill('admin1', '12345')}
                   className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-indigo-400 font-mono border border-indigo-500/30 transition-all cursor-pointer flex items-center gap-1"
                 >
-                  <span>💳</span> Kichik Admin (admin1 / 12345)
+                  <Icon name="badge" className="text-xs text-indigo-400" /> Kichik Admin (admin1 / 12345)
                 </button>
               </div>
             </div>
@@ -1133,7 +1162,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
         const mergedStudentsCount = initialStudentCount - canonicalStudents.length;
         const mergedGroupsCount = initialGroupCount - canonicalGroups.length;
-        showToast(`🧹 Baza tozalandi! ${mergedStudentsCount} ta takrorlangan talaba va ${mergedGroupsCount} ta guruh birlashtirildi! (${canonicalStudents.length} ta unikal talaba qoldi) ✨`);
+        showToast(`Baza tozalandi: ${mergedStudentsCount} ta takrorlangan talaba va ${mergedGroupsCount} ta guruh birlashtirildi. (${canonicalStudents.length} ta unikal talaba qoldi)`);
       };
 
       const handleLogout = () => {
@@ -2451,7 +2480,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
           setExcelImportSummary(summaryObj);
           setIsExcelImportModalOpen(true);
-          showToast(`"${fileName}" fayli ${targetMonth} oyiga muvaffaqiyatli tahlil qilinib yuklandi! 📊✅ (Yangi talabalar: ${newStudentsCount}, Baza bilan mos tushganlar: ${matchedStudentsCount})`);
+          showToast(`"${fileName}" fayli ${targetMonth} oyiga muvaffaqiyatli yuklandi (Yangi talabalar: ${newStudentsCount}, Baza bilan mos tushganlar: ${matchedStudentsCount})`);
 
           // Supabase-ga avtomatik tarzda barcha yuklangan ma'lumotlarni yuborish (Auto-push to Supabase)
           if (supabase) {
@@ -2616,7 +2645,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           try { await safeChunkedUpsert('staff', mappedStaff); } catch(ste) { console.warn('Staff sync notice:', ste); }
 
           setSupabaseConfig(prev => ({ ...prev, isConnected: true }));
-          showToast("Barcha ma'lumotlar Supabase bulutiga avtomatik saqlandi! ☁️✅");
+          showToast("Barcha ma'lumotlar Supabase bulutiga saqlandi!");
         } catch (err) {
           console.error("Supabase sync error:", err);
           if (!isSilent) {
@@ -2814,7 +2843,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
           if (!isSilent) {
             if (pullSuccess) {
-              showToast("Barcha ma'lumotlar Supabase dan muvaffaqiyatli yuklab olindi! ✅");
+              showToast("Barcha ma'lumotlar Supabase dan yuklab olindi!");
             } else {
               showToast("Supabase bazasida hozircha ma'lumotlar yo'q");
             }
@@ -3081,7 +3110,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             if (isMounted) {
               setSupabaseConfig(prev => ({ ...prev, isConnected: true }));
               if (foundCloudData) {
-                showToast("Supabase bulutidagi ma'lumotlar avtomatik yuklandi! ☁️✅");
+                showToast("Supabase bulutidagi ma'lumotlar yuklandi.");
               }
             }
           } catch (err) {
@@ -3480,7 +3509,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               note: formData.editReason || "Super Admin tomonidan summa o'zgartirildi"
             };
             historyList.unshift(revision);
-            logAdminAction('PAYMENT_EDIT_SUM', "Summa o'zgartirish", `${formData.studentName} to'lov summasi o'zgartirildi: ${formatMoney(oldTotal)} ➔ ${formatMoney(newTotal)} (${newTotal >= oldTotal ? '+' : ''}${formatMoney(newTotal - oldTotal)}). Izoh: ${formData.editReason || "Super Admin tomonidan o'zgartirildi"}`);
+            logAdminAction('PAYMENT_EDIT_SUM', "Summa o'zgartirish", `${formData.studentName} to'lov summasi o'zgartirildi: ${formatMoney(oldTotal)} → ${formatMoney(newTotal)} (${newTotal >= oldTotal ? '+' : ''}${formatMoney(newTotal - oldTotal)}). Izoh: ${formData.editReason || "Super Admin tomonidan o'zgartirildi"}`);
             showToast(`Summa muvaffaqiyatli o'zgartirildi va tarixga yozildi! (Eski: ${formatMoney(oldTotal)} → Yangi: ${formatMoney(newTotal)})`);
           }
 
@@ -3693,7 +3722,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         setExpenses(prev => [newExp, ...prev]);
         syncExpenseToSupabase(newExp);
         logAdminAction('PAYROLL_PAY', 'Oylik to\'lovi', `${person.name} ga ${targetMonth} oyi uchun ${formatMoney(amount)} oylik to'landi (${catName})`);
-        showToast(`${person.name} uchun ${formatMoney(amount)} oylik to'landi va harajatga yozildi! 💵`);
+        showToast(`${person.name} uchun ${formatMoney(amount)} oylik to'landi va harajatga yozildi.`);
       };
 
       // Filtered Payments
@@ -3873,8 +3902,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           {/* Header */}
           <header className="h-[68px] shrink-0 glass-nav px-6 flex items-center justify-between z-40 border-b border-white/[0.08]">
             <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 flex items-center justify-center font-bold text-xl shadow-lg shadow-emerald-500/25 border border-white/20 text-slate-950">
-                📊
+              <div className="w-11 h-11 rounded-2xl bg-slate-900 border border-emerald-500/30 flex items-center justify-center shadow-lg shadow-emerald-500/15 text-emerald-400">
+                <Icon name="account_balance_wallet" className="text-2xl" />
               </div>
               <div>
                 <div className="flex items-center gap-2.5">
@@ -3888,11 +3917,11 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   {supabaseConfig.url ? (
                     <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5 font-medium shadow-sm">
                       <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}`}></span>
-                      {isSyncing ? "Bulut bilan sinxronlanmoqda..." : "⚡ Supabase (Bulut faol)"}
+                      {isSyncing ? "Bulut bilan sinxronlanmoqda..." : "Supabase (Bulut faol)"}
                     </span>
                   ) : (
                     <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300/90 border border-amber-500/30 flex items-center gap-1.5 font-medium">
-                      <span>💾</span> Lokal rejim
+                      <Icon name="save" className="text-xs mr-1 text-amber-400" /> Lokal rejim
                     </span>
                   )}
                 </div>
@@ -3906,7 +3935,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 className={`px-4.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer ${isExcelLoading ? 'opacity-50 pointer-events-none animate-pulse' : ''}`}
                 title="Excel hisobot faylini yuklash (.xlsx, .xls) - to'lovlar, xarajatlar, kadrlar va o'quvchilarni to'liq o'qib hisoblaydi va Supabase-ga avtomatik yuklaydi"
               >
-                <span className="text-base">{isExcelLoading ? '⏳' : '📊'}</span>
+                <Icon name={isExcelLoading ? "sync" : "upload_file"} className={`text-base ${isExcelLoading ? "animate-spin" : ""}`} />
                 <span className="tracking-wide">{isExcelLoading ? 'Tahlil qilinmoqda...' : 'Excel Yuklash'}</span>
                 <input
                   type="file"
@@ -3927,7 +3956,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   }`}
                   title="Super Admin boshqaruv markazi va harakatlar jurnali"
                 >
-                  <span>👑</span>
+                  <Icon name="admin_panel_settings" className="text-base text-amber-400" />
                   <span>Adminlar Paneli</span>
                   <span className="px-1.5 py-0.2 rounded-full bg-black/30 text-[10px] font-mono">
                     {users.length}
@@ -3943,7 +3972,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       ? 'bg-gradient-to-tr from-amber-500 to-orange-600 text-slate-950 border-amber-300/40'
                       : 'bg-gradient-to-tr from-indigo-500 to-teal-500 text-white border-indigo-400/30'
                   }`}>
-                    {isSuperAdmin ? '👑' : (currentUser.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U')}
+                    <Icon name={isSuperAdmin ? "shield_person" : "person"} className="text-base" />
                   </div>
                   <div className="text-left hidden sm:block">
                     <div className="text-xs font-bold text-white leading-tight flex items-center gap-1">
@@ -3960,7 +3989,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-white/[0.08] hover:border-rose-500/40 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
                   title="Tizimdan chiqish"
                 >
-                  <span>🚪</span>
+                  <Icon name="logout" className="text-sm" />
                   <span className="hidden md:inline">Chiqish</span>
                 </button>
               </div>
@@ -3985,7 +4014,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-sm">📥</span> To'lovlar (Tushum)
+                    <Icon name="payments" className="text-base text-emerald-400 mr-1" /> To'lovlar (Tushum)
                   </div>
                   <span className={`text-[10px] font-mono tabular-nums px-2 py-0.5 rounded-full ${activeTab === 'tushum' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-white/[0.08] text-slate-400'}`}>
                     {filteredPayments.length}
@@ -4001,7 +4030,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-sm">📤</span> Harajatlar
+                    <Icon name="receipt_long" className="text-base text-rose-400 mr-1" /> Harajatlar
                   </div>
                   <span className={`text-[10px] font-mono tabular-nums px-2 py-0.5 rounded-full ${activeTab === 'harajat' ? 'bg-black/20 text-white font-black' : 'bg-white/[0.08] text-slate-400'}`}>
                     {currentMonthExpenses.length}
@@ -4017,7 +4046,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-sm">👥</span> O'quvchilar Bazasi
+                    <Icon name="groups" className="text-base text-indigo-400 mr-1" /> O'quvchilar Bazasi
                   </div>
                   <span className={`text-[10px] font-mono tabular-nums px-2 py-0.5 rounded-full ${activeTab === 'students' ? 'bg-black/20 text-white font-black' : 'bg-white/[0.08] text-slate-400'}`}>
                     {students.length}
@@ -4033,7 +4062,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-sm">🏫</span> Guruhlar
+                    <Icon name="school" className="text-base text-purple-400 mr-1" /> Guruhlar
                   </div>
                   <span className={`text-[10px] font-mono tabular-nums px-2 py-0.5 rounded-full ${activeTab === 'groups' ? 'bg-black/20 text-white font-black' : 'bg-white/[0.08] text-slate-400'}`}>
                     {groups.length}
@@ -4049,7 +4078,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-sm">👔</span> Xodimlar & Oylik
+                    <Icon name="badge" className="text-base text-amber-400 mr-1" /> Xodimlar & Oylik
                   </div>
                   <span className={`text-[10px] font-mono tabular-nums px-2 py-0.5 rounded-full ${activeTab === 'staff' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-white/[0.08] text-slate-400'}`}>
                     {staff.length}
@@ -4065,7 +4094,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-sm">⚡</span> Supabase Baza
+                    <Icon name="cloud" className="text-base text-cyan-400 mr-1" /> Supabase Baza
                   </div>
                   <span className={`w-2.5 h-2.5 rounded-full ${supabaseConfig.url ? 'bg-emerald-400 shadow-sm shadow-emerald-400' : 'bg-amber-400'}`}></span>
                 </button>
@@ -4080,7 +4109,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="text-sm">👑</span> Adminlar Paneli
+                      <Icon name="admin_panel_settings" className="text-base text-amber-400 mr-1" /> Adminlar Paneli
                     </div>
                     <span className={`text-[10px] font-mono tabular-nums px-2 py-0.5 rounded-full font-bold ${activeTab === 'users' ? 'bg-slate-950/20 text-slate-950' : 'bg-amber-500/20 text-amber-300'}`}>
                       {users.length}
@@ -4091,7 +4120,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
               {/* Month Navigation Title + Add Month */}
               <div className="flex items-center justify-between px-2 pt-1 pb-1 shrink-0">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">📅 Oylar</span>
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Icon name="calendar_month" className="text-xs" /> Oylar</span>
                 <button
                   onClick={openAddMonthModal}
                   className="text-[10px] px-2 py-0.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 hover:text-white border border-emerald-500/30 font-bold transition-all flex items-center gap-1 shadow cursor-pointer"
@@ -4110,7 +4139,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
                 }`}
               >
-                <span className="text-base">🗂️</span> Barcha oylar
+                <Icon name="calendar_view_month" className="text-base text-slate-400 mr-1" /> Barcha oylar
               </button>
 
               {/* Month List */}
@@ -4136,7 +4165,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-base">{icon}</span>
+                          <Icon name={icon} className="text-base text-emerald-400" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className={`font-bold text-xs truncate ${isActive ? 'text-white' : ''}`}>{m}</span>
@@ -4170,7 +4199,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                           }`}
                           title={`${m} oyini o'chirish`}
                         >
-                          ✕
+                          <Icon name="close" className="text-xs" />
                         </button>
                       )}
                     </div>
@@ -4184,7 +4213,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 className="w-full mt-1 py-2 px-3 rounded-xl border border-dashed border-emerald-500/40 hover:border-emerald-500 text-emerald-400 hover:text-emerald-300 text-xs font-bold flex items-center justify-center gap-2 transition-all bg-emerald-950/20 hover:bg-emerald-950/40 shrink-0 cursor-pointer"
                 title="Bitta bosishda ketma-ket keyingi oyni ochadi"
               >
-                <span>➕</span> Keyingi oyni ochish
+                <Icon name="add_circle" className="text-sm mr-1" /> Keyingi oyni ochish
               </button>
 
               {/* Sidebar Footer Info */}
@@ -4210,8 +4239,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   <div className="p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-emerald-500/30 relative overflow-hidden shadow-xl hover:border-emerald-500/50 hover:-translate-y-0.5 transition-all group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/20 transition-all"/>
                     <div className="flex items-center justify-between">
-                      <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">📥 Jami Tushum</div>
-                      <span className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-sm">💰</span>
+                      <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5"><Icon name="payments" className="text-sm" /> Jami Tushum</div>
+                      <span className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400"><Icon name="account_balance_wallet" className="text-lg" /></span>
                     </div>
                     <div className="text-2xl lg:text-3xl font-black text-emerald-400 mt-2 font-mono tabular-nums">{formatMoney(totalRevenue)}</div>
                     <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums flex items-center gap-2">
@@ -4224,8 +4253,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   <div className="p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-rose-500/30 relative overflow-hidden shadow-xl hover:border-rose-500/50 hover:-translate-y-0.5 transition-all group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-rose-500/20 transition-all"/>
                     <div className="flex items-center justify-between">
-                      <div className="text-[11px] font-bold text-rose-400 uppercase tracking-wider">📤 Jami Harajat</div>
-                      <span className="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-sm">🧾</span>
+                      <div className="text-[11px] font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5"><Icon name="receipt_long" className="text-sm" /> Jami Harajat</div>
+                      <span className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400"><Icon name="receipt_long" className="text-lg" /></span>
                     </div>
                     <div className="text-2xl lg:text-3xl font-black text-rose-400 mt-2 font-mono tabular-nums">{formatMoney(totalExpenses)}</div>
                     <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums flex items-center gap-2">
@@ -4243,10 +4272,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     <div className="flex items-center justify-between">
                       <div className={`text-[11px] font-bold uppercase tracking-wider ${
                         sofFoyda >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                      }`}>💹 Sof Foyda</div>
-                      <span className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm ${
-                        sofFoyda >= 0 ? 'bg-emerald-500/15 border-emerald-500/30' : 'bg-rose-500/15 border-rose-500/30'
-                      }`}>📈</span>
+                      }`}>Sof Foyda</div>
+                      <span className={`w-8 h-8 rounded-xl border flex items-center justify-center ${
+                        sofFoyda >= 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                      }`}><Icon name="trending_up" className="text-lg" /></span>
                     </div>
                     <div className={`text-2xl lg:text-3xl font-black mt-2 font-mono tabular-nums ${
                       sofFoyda >= 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -4266,10 +4295,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     <div className="flex items-center justify-between">
                       <div className={`text-[11px] font-bold uppercase tracking-wider ${
                         kassoviyRazriv >= 0 ? 'text-cyan-400' : 'text-orange-400'
-                      }`}>⚡ Kassoviy Razriv</div>
-                      <span className={`w-8 h-8 rounded-xl border flex items-center justify-center text-sm ${
-                        kassoviyRazriv >= 0 ? 'bg-cyan-500/15 border-cyan-500/30' : 'bg-orange-500/15 border-orange-500/30'
-                      }`}>⚡</span>
+                      }`}>Kassoviy Razriv</div>
+                      <span className={`w-8 h-8 rounded-xl border flex items-center justify-center ${
+                        kassoviyRazriv >= 0 ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' : 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+                      }`}><Icon name="bolt" className="text-lg" /></span>
                     </div>
                     <div className={`text-2xl lg:text-3xl font-black mt-2 font-mono tabular-nums ${
                       kassoviyRazriv >= 0 ? 'text-cyan-400' : 'text-orange-400'
@@ -4277,7 +4306,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums flex items-center gap-2">
                       <span className="px-2 py-0.5 rounded-md bg-white/[0.05] text-slate-300 border border-white/[0.08]">Naqd − Harajat</span>
                       {kassoviyRazriv < 0 && (
-                        <span className="px-2 py-0.5 rounded-md bg-orange-500/20 text-orange-300 border border-orange-500/40 font-bold">⚠️ Yetishmovchilik!</span>
+                        <span className="px-2 py-0.5 rounded-md bg-orange-500/20 text-orange-300 border border-orange-500/40 font-bold flex items-center gap-1"><Icon name="warning" className="text-xs" /> Yetishmovchilik!</span>
                       )}
                     </div>
                   </div>
@@ -4287,13 +4316,13 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 {selectedMonth !== 'all' && (
                   <div className="p-4.5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-indigo-950/40 border border-white/[0.08] flex flex-wrap items-center justify-between gap-4 shadow-xl backdrop-blur-xl">
                     <div className="flex items-center gap-3.5">
-                      <span className="text-3xl drop-shadow">{getMonthIcon(selectedMonth)}</span>
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400"><Icon name="calendar_month" className="text-2xl" /></div>
                       <div>
                         <div className="text-sm font-bold text-white flex items-center gap-2.5">
                           <span>{selectedMonth} oyi boshqaruv paneli</span>
                           {selectedMonth === currentCalMonth && (
                             <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold shadow-sm">
-                              🔴 Joriy Kalendar Oyi
+                              Joriy Kalendar Oyi
                             </span>
                           )}
                         </div>
@@ -4309,14 +4338,14 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         className="px-3.5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-white text-xs font-semibold shadow transition-all flex items-center gap-1.5 border border-rose-500/30 cursor-pointer"
                         title="Ushbu oyni butunlay o'chirish"
                       >
-                        <span>🗑️</span> Oyni o'chirish
+                        <Icon name="delete" className="text-sm mr-1" /> Oyni o'chirish
                       </button>
                       <button
                         onClick={() => handleRolloverStudents(selectedMonth)}
                         className="px-3.5 py-2.5 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs font-semibold shadow-lg shadow-indigo-600/25 transition-all flex items-center gap-1.5 border border-indigo-400/30 cursor-pointer"
                         title="Barcha faol o'quvchilarni yangi oyga to'lov kutilmoqda holatida o'tkazish"
                       >
-                        <span>👥</span> O'quvchilarni oyga shakllantirish
+                        <Icon name="group_add" className="text-sm mr-1" /> O'quvchilarni oyga shakllantirish
                       </button>
                       <button
                         onClick={() => {
@@ -4332,7 +4361,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         }}
                         className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-extrabold shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-1.5 cursor-pointer"
                       >
-                        <span>+</span> Yangi To'lov
+                        <Icon name="add" className="text-sm mr-1" /> Yangi To'lov
                       </button>
                     </div>
                   </div>
@@ -4347,32 +4376,32 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
                   <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-emerald-500/30 shadow-lg relative overflow-hidden group hover:border-emerald-500/50 transition-all">
                     <div className="flex items-center justify-between">
-                      <div className="text-[10px] text-emerald-400 font-extrabold uppercase tracking-wider">🟢 Naqd Tushum</div>
-                      <span className="text-xs">💵</span>
+                      <div className="text-[10px] text-emerald-400 font-extrabold uppercase tracking-wider flex items-center gap-1"><Icon name="payments" className="text-xs" /> Naqd Tushum</div>
+                      <Icon name="payments" className="text-xs text-emerald-400/60" />
                     </div>
                     <div className="text-xl font-black text-emerald-400 mt-1 font-mono tabular-nums">{formatMoney(totalCash)}</div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-blue-500/30 shadow-lg relative overflow-hidden group hover:border-blue-500/50 transition-all">
                     <div className="flex items-center justify-between">
-                      <div className="text-[10px] text-blue-400 font-extrabold uppercase tracking-wider">🔵 Click / Karta</div>
-                      <span className="text-xs">💳</span>
+                      <div className="text-[10px] text-blue-400 font-extrabold uppercase tracking-wider flex items-center gap-1"><Icon name="credit_card" className="text-xs" /> Click / Karta</div>
+                      <Icon name="credit_card" className="text-xs text-blue-400/60" />
                     </div>
                     <div className="text-xl font-black text-blue-400 mt-1 font-mono tabular-nums">{formatMoney(totalClick)}</div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-amber-500/30 shadow-lg relative overflow-hidden group hover:border-amber-500/50 transition-all">
                     <div className="flex items-center justify-between">
-                      <div className="text-[10px] text-amber-400 font-extrabold uppercase tracking-wider">🟡 Qisman To'lagan</div>
-                      <span className="text-xs">⏳</span>
+                      <div className="text-[10px] text-amber-400 font-extrabold uppercase tracking-wider flex items-center gap-1"><Icon name="hourglass_bottom" className="text-xs" /> Qisman To'lagan</div>
+                      <Icon name="hourglass_bottom" className="text-xs text-amber-400/60" />
                     </div>
                     <div className="text-xl font-black text-amber-400 mt-1 font-mono tabular-nums">{partialCount} <span className="text-xs font-normal text-slate-400">ta</span></div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-rose-500/30 shadow-lg relative overflow-hidden group hover:border-rose-500/50 transition-all">
                     <div className="flex items-center justify-between">
-                      <div className="text-[10px] text-rose-400 font-extrabold uppercase tracking-wider">🔴 Qarzdorlar</div>
-                      <span className="text-xs">⚠️</span>
+                      <div className="text-[10px] text-rose-400 font-extrabold uppercase tracking-wider flex items-center gap-1"><Icon name="warning" className="text-xs" /> Qarzdorlar</div>
+                      <Icon name="warning" className="text-xs text-rose-400/60" />
                     </div>
                     <div className="text-xl font-black text-rose-400 mt-1 font-mono tabular-nums">{debtorsCount} <span className="text-xs font-normal text-slate-400">ta</span></div>
                     <div className="text-[10px] text-rose-400/80 mt-0.5 font-mono tabular-nums">Jami qarz: {formatMoney(totalDebt)}</div>
@@ -4382,7 +4411,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 {/* Filter & Search Toolbar */}
                 <div className="p-3.5 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-white/[0.08] flex flex-wrap gap-3 items-center shadow-lg">
                   <div className="flex items-center gap-2 text-xs text-slate-400 font-bold pl-1">
-                    <span>🔍</span> Qidiruv:
+                    <Icon name="search" className="text-slate-400 text-sm mr-1" /> Qidiruv:
                   </div>
                   <input
                     type="text"
@@ -4407,16 +4436,16 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     className="px-3 py-2 rounded-xl bg-slate-800/80 text-white text-xs border border-white/[0.1] focus:outline-none focus:border-emerald-500/60 font-medium cursor-pointer"
                   >
                     <option value="all">Barcha Statuslar</option>
-                    <option value="paid">✅ To'ladi</option>
-                    <option value="partial">🟡 Qisman to'ladi</option>
-                    <option value="debt">🔴 Qarzdor</option>
-                    <option value="prepaid">💜 3 Oylik Depozit</option>
+                    <option value="paid">To'ladi</option>
+                    <option value="partial">Qisman to'ladi</option>
+                    <option value="debt">Qarzdor</option>
+                    <option value="prepaid">3 Oylik Depozit</option>
                   </select>
                   {(searchTerm || selectedGroup !== 'all' || selectedStatus !== 'all') && (
                     <button
                       onClick={() => { setSearchTerm(''); setSelectedGroup('all'); setSelectedStatus('all'); }}
                       className="px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-xs transition-all cursor-pointer font-semibold border border-white/[0.08]"
-                    >✕ Tozalash</button>
+                     className="px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-xs transition-all cursor-pointer font-semibold border border-white/[0.08] flex items-center gap-1"><Icon name="close" className="text-xs" /> Tozalash</button>
                   )}
                   <span className="ml-auto text-xs text-slate-400 font-mono tabular-nums pr-1">
                     {filteredPayments.length} ta natija
@@ -4427,7 +4456,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 <div className="rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] overflow-hidden shadow-2xl">
                   <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.08] bg-slate-950/70">
                     <div className="flex items-center gap-2.5">
-                      <span className="text-lg">📥</span>
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400"><Icon name="table_chart" className="text-base" /></div>
                       <div>
                         <div className="font-extrabold text-white text-sm">To'lovlar Jurnali (Tushum)</div>
                         <div className="text-[11px] text-slate-400 font-mono tabular-nums">
@@ -4506,7 +4535,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                         className="mt-0.5 text-[9px] px-1.5 py-0.2 rounded bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 font-semibold flex items-center gap-1 cursor-pointer transition-all"
                                         title="O'zgartirilgan summalarning eski variantlarini ko'rish"
                                       >
-                                        <span>🔄</span> {p.history.length} ta o'zgarish (tarix)
+                                        <Icon name="history" className="text-xs mr-1" /> {p.history.length} ta o'zgarish
                                       </button>
                                     )}
                                   </div>
@@ -4567,26 +4596,26 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                     className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 text-[11px] font-bold border border-emerald-500/30 transition-all cursor-pointer shadow-sm"
                                     title="To'lov kiritish"
                                   >
-                                    💳 To'lov
+                                    To'lov
                                   </button>
                                   {/* Super Admin or Edit Button */}
                                   <button
                                     onClick={() => handleEditPayment(p)}
-                                    className={`p-1.5 rounded-lg transition-colors text-xs font-bold cursor-pointer ${
+                                    className={`p-1.5 rounded-lg transition-colors text-xs font-bold cursor-pointer flex items-center justify-center ${
                                       isSuperAdmin
                                         ? 'text-amber-300 hover:text-white hover:bg-amber-500/20 border border-amber-500/30'
                                         : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]'
                                     }`}
                                     title={isSuperAdmin ? "Super Admin: Summani o'zgartirish va tahrirlash" : "To'lovni ko'rish"}
                                   >
-                                    ✏️
+                                    <Icon name="edit" className="text-xs" />
                                   </button>
                                   <button
                                     onClick={() => handleDeletePayment(p.id)}
-                                    className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors text-xs font-bold cursor-pointer"
+                                    className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors text-xs font-bold cursor-pointer flex items-center justify-center"
                                     title="O'chirish"
                                   >
-                                    ✕
+                                    <Icon name="delete" className="text-xs" />
                                   </button>
                                 </div>
                               </td>
@@ -4615,25 +4644,25 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               <div className="space-y-5">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
                   <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-blue-500/30 shadow-lg relative overflow-hidden group hover:border-blue-500/50 transition-all">
-                    <div className="text-[10px] text-blue-400 font-extrabold uppercase tracking-wider">👔 O'qituvchi & Kadrlar</div>
+                    <div className="text-[10px] text-blue-400 font-extrabold uppercase tracking-wider flex items-center gap-1"><Icon name="badge" className="text-xs" /> O'qituvchi & Kadrlar</div>
                     <div className="text-xl font-black text-blue-400 mt-1 font-mono tabular-nums">{formatMoney(staffExpensesTotal)}</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">Ustozlar maoshi va avanslar</div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-amber-500/30 shadow-lg relative overflow-hidden group hover:border-amber-500/50 transition-all">
-                    <div className="text-[10px] text-amber-400 font-extrabold uppercase tracking-wider">🏢 Markaz Xarajatlari</div>
+                    <div className="text-[10px] text-amber-400 font-extrabold uppercase tracking-wider flex items-center gap-1"><Icon name="apartment" className="text-xs" /> Markaz Xarajatlari</div>
                     <div className="text-xl font-black text-amber-400 mt-1 font-mono tabular-nums">{formatMoney(centerExpensesTotal)}</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">Ijara, svet, internet, target</div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-purple-500/30 shadow-lg relative overflow-hidden group hover:border-purple-500/50 transition-all">
-                    <div className="text-[10px] text-purple-400 font-extrabold uppercase tracking-wider">👑 Founder Xarajatlari</div>
+                    <div className="text-[10px] text-purple-400 font-extrabold uppercase tracking-wider flex items-center gap-1"><Icon name="shield_person" className="text-xs" /> Founder Xarajatlari</div>
                     <div className="text-xl font-black text-purple-400 mt-1 font-mono tabular-nums">{formatMoney(founderExpensesTotal)}</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">Ta'sischilar ulushi va dividentlar</div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-rose-500/30 shadow-lg relative overflow-hidden group hover:border-rose-500/50 transition-all">
-                    <div className="text-[10px] text-rose-400 font-extrabold uppercase tracking-wider">🔴 JAMI CHIQIM</div>
+                    <div className="text-[10px] text-rose-400 font-extrabold uppercase tracking-wider flex items-center gap-1"><Icon name="receipt_long" className="text-xs" /> JAMI CHIQIM</div>
                     <div className="text-xl font-black text-rose-400 mt-1 font-mono tabular-nums">{formatMoney(totalExpenses)}</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">{selectedMonth === 'all' ? 'Barcha oylar' : selectedMonth}</div>
                   </div>
@@ -4642,10 +4671,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 {/* Filtr Tugmalari (Barchasi, Founder, O'qituvchilar, Markaz) */}
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   {[
-                    { id: 'all', label: 'Barchasi', count: currentMonthExpenses.length, icon: '🔘' },
-                    { id: 'Founder', label: 'Founder Xarajatlari', count: currentMonthExpenses.filter(e => e.type === 'Founder' || String(e.category||'').toLowerCase().includes('founder')).length, icon: '👑' },
-                    { id: 'Kadrlar', label: 'O\'qituvchilar Oyligi', count: currentMonthExpenses.filter(e => e.type === 'Kadrlar' || String(e.category||'').toLowerCase().includes('oylik')).length, icon: '👔' },
-                    { id: 'Markaz', label: 'Markaz Xarajatlari', count: currentMonthExpenses.filter(e => e.type === 'Markaz' || e.type === 'Fixed' || e.type === 'Marketing').length, icon: '🏢' }
+                    { id: 'all', label: 'Barchasi', count: currentMonthExpenses.length, icon: 'filter_list' },
+                    { id: 'Founder', label: 'Founder Xarajatlari', count: currentMonthExpenses.filter(e => e.type === 'Founder' || String(e.category||'').toLowerCase().includes('founder')).length, icon: 'shield_person' },
+                    { id: 'Kadrlar', label: 'O\'qituvchilar Oyligi', count: currentMonthExpenses.filter(e => e.type === 'Kadrlar' || String(e.category||'').toLowerCase().includes('oylik')).length, icon: 'badge' },
+                    { id: 'Markaz', label: 'Markaz Xarajatlari', count: currentMonthExpenses.filter(e => e.type === 'Markaz' || e.type === 'Fixed' || e.type === 'Marketing').length, icon: 'apartment' }
                   ].map(f => (
                     <button
                       key={f.id}
@@ -4668,7 +4697,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 <div className="rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] overflow-hidden shadow-2xl">
                   <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.08] bg-slate-950/70">
                     <div className="flex items-center gap-2.5">
-                      <span className="text-lg">📤</span>
+                      <Icon name="receipt_long" className="text-base text-rose-400" />
                       <div>
                         <div className="font-extrabold text-white text-sm">Harajatlar Jurnali</div>
                         <div className="text-[11px] text-slate-400 font-mono tabular-nums">
@@ -4731,7 +4760,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                 onClick={() => handleDeleteExpense(exp.id)}
                                 className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors text-xs font-bold cursor-pointer"
                                 title="O'chirish"
-                              >✕</button>
+                              ><Icon name="close" className="text-xs" /></button>
                             </td>
                           </tr>
                         ))}
@@ -4757,8 +4786,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 {/* Students Header Banner */}
                 <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-indigo-950/40 border border-white/[0.08] flex flex-wrap items-center justify-between gap-4 shadow-xl backdrop-blur-xl">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/15">
-                      👥
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-lg shadow-indigo-500/15">
+                      <Icon name="groups" className="text-2xl" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2.5">
@@ -4788,14 +4817,14 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     }}
                     className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-400 hover:to-blue-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <span>+</span> Yangi O'quvchi Qo'shish
+                    <Icon name="person_add" className="text-sm mr-1" /> Yangi O'quvchi Qo'shish
                   </button>
                 </div>
 
                 {/* Filter Bar */}
                 <div className="p-3.5 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-white/[0.08] flex flex-wrap gap-3 items-center shadow-lg">
                   <div className="flex items-center gap-2 text-xs text-slate-400 font-bold pl-1">
-                    <span>🔍</span> Qidiruv:
+                    <Icon name="search" className="text-slate-400 text-sm mr-1" /> Qidiruv:
                   </div>
                   <input
                     type="text"
@@ -4818,7 +4847,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     <button
                       onClick={() => { setStudentSearchTerm(''); setStudentFilterGroup('all'); }}
                       className="px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-xs transition-all cursor-pointer font-semibold border border-white/[0.08]"
-                    >✕ Tozalash</button>
+                     className="px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-xs transition-all cursor-pointer font-semibold border border-white/[0.08] flex items-center gap-1"><Icon name="close" className="text-xs" /> Tozalash</button>
                   )}
                   <span className="ml-auto text-xs text-slate-400 font-mono tabular-nums pr-1">{filteredStudentsList.length} ta o'quvchi topildi</span>
                 </div>
@@ -4888,15 +4917,13 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                   className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
                                   title="Tahrirlash"
                                 >
-                                  ✏️ Tahrir
+                                  Tahrir
                                 </button>
                                 <button
                                   onClick={() => handleDeleteStudent(stu.id)}
                                   className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors text-xs font-bold cursor-pointer"
                                   title="O'chirish"
-                                >
-                                  ✕
-                                </button>
+                                ><Icon name="close" className="text-xs" /></button>
                               </div>
                             </td>
                           </tr>
@@ -4913,8 +4940,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               <div className="space-y-5">
                 <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-purple-950/40 border border-white/[0.08] flex flex-wrap items-center justify-between gap-4 shadow-xl backdrop-blur-xl">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-2xl shadow-lg shadow-purple-500/15">
-                      🏫
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-lg shadow-purple-500/15">
+                      <Icon name="school" className="text-2xl" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2.5">
@@ -4941,7 +4968,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     }}
                     className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-400 hover:to-violet-500 text-white font-extrabold text-xs shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <span>+</span> Yangi Guruh Ochish
+                    <Icon name="add" className="text-sm mr-1" /> Yangi Guruh Ochish
                   </button>
                 </div>
 
@@ -4964,12 +4991,12 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                               onClick={() => { setGroupForm({ ...grp }); setIsGroupModalOpen(true); }}
                               className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 text-xs cursor-pointer border border-white/[0.08]"
                               title="Tahrirlash"
-                            >✏️</button>
+                            ><Icon name="edit" className="text-xs" /></button>
                             <button
                               onClick={() => handleDeleteGroup(grp.id)}
                               className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 text-xs font-bold cursor-pointer border border-white/[0.08]"
                               title="O'chirish"
-                            >✕</button>
+                            ><Icon name="close" className="text-xs" /></button>
                           </div>
                         </div>
 
@@ -5011,8 +5038,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 {/* Header Banner */}
                 <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-amber-950/40 border border-amber-500/30 flex flex-wrap items-center justify-between gap-4 shadow-xl backdrop-blur-xl">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-2xl shadow-lg shadow-amber-500/25 text-slate-950 font-black">
-                      👔
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/15">
+                      <Icon name="badge" className="text-2xl" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2.5">
@@ -5047,7 +5074,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       }}
                       className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer"
                     >
-                      <span>+</span> Yangi Xodim / Ustoz Qo'shish
+                      <Icon name="person_add" className="text-sm mr-1" /> Yangi Xodim / Ustoz Qo'shish
                     </button>
                   </div>
                 </div>
@@ -5058,7 +5085,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   <div className="p-4 rounded-2xl bg-slate-900/70 border border-amber-500/30 shadow-lg relative overflow-hidden backdrop-blur-xl">
                     <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
                       <span className="flex items-center gap-1.5 text-amber-300">
-                        <span>🎓</span> Ustozlar Oylik Fondi
+                        <Icon name="school" className="text-sm text-emerald-400 mr-1" /> Ustozlar Oylik Fondi
                       </span>
                       <span className="font-mono text-[10px] bg-amber-500/15 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
                         {staffPayrollSummary.filter(s => s.role === 'teacher').length} ta ustoz
@@ -5076,7 +5103,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   <div className="p-4 rounded-2xl bg-slate-900/70 border border-indigo-500/30 shadow-lg relative overflow-hidden backdrop-blur-xl">
                     <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
                       <span className="flex items-center gap-1.5 text-indigo-300">
-                        <span>💼</span> Qat'iy Oylik Fondi
+                        <Icon name="badge" className="text-sm text-blue-400 mr-1" /> Qat'iy Oylik Fondi
                       </span>
                       <span className="font-mono text-[10px] bg-indigo-500/15 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">
                         {staffPayrollSummary.filter(s => s.role === 'staff').length} ta xodim
@@ -5094,7 +5121,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   <div className="p-4 rounded-2xl bg-slate-900/70 border border-emerald-500/30 shadow-lg relative overflow-hidden backdrop-blur-xl">
                     <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
                       <span className="flex items-center gap-1.5 text-emerald-300">
-                        <span>💰</span> Jami Hisoblangan Ish Haqi
+                        <Icon name="account_balance_wallet" className="text-sm text-amber-400 mr-1" /> Jami Hisoblangan Ish Haqi
                       </span>
                       <span className="font-mono text-[10px] bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
                         {activePayrollMonth}
@@ -5112,7 +5139,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   <div className="p-4 rounded-2xl bg-slate-900/70 border border-white/[0.08] shadow-lg relative overflow-hidden backdrop-blur-xl">
                     <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
                       <span className="flex items-center gap-1.5 text-slate-200">
-                        <span>💳</span> To'langan / Qoldiq
+                        <Icon name="payments" className="text-sm text-teal-400 mr-1" /> To'langan / Qoldiq
                       </span>
                     </div>
                     <div className="flex items-baseline gap-2 mt-2">
@@ -5153,7 +5180,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                             : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 border border-white/[0.06]'
                         }`}
                       >
-                        🎓 Ustozlar ({staff.filter(s => s.role === 'teacher').length})
+                        Ustozlar ({staff.filter(s => s.role === 'teacher').length})
                       </button>
                       <button
                         onClick={() => setStaffFilter('staff')}
@@ -5163,7 +5190,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                             : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 border border-white/[0.06]'
                         }`}
                       >
-                        💼 Boshqa Xodimlar ({staff.filter(s => s.role === 'staff').length})
+                        Boshqa Xodimlar ({staff.filter(s => s.role === 'staff').length})
                       </button>
                     </div>
 
@@ -5214,7 +5241,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                       ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
                                       : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
                                   }`}>
-                                    {isTeacher ? '🎓' : '💼'}
+                                    <Icon name={isTeacher ? "school" : "badge"} className="text-base" />
                                   </div>
                                   <div>
                                     <div className="font-bold text-white text-xs flex items-center gap-1.5">
@@ -5238,11 +5265,11 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                   <div className="mt-1">
                                     {isTeacher ? (
                                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                                        <span>📊</span> {st.percent}% foiz stavka
+                                        <Icon name="percent" className="text-xs text-amber-400 mr-1" /> {st.percent}% foiz stavka
                                       </span>
                                     ) : (
                                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-mono">
-                                        <span>💰</span> Qat'iy: {formatMoney(st.fixedSalary)}
+                                        <Icon name="payments" className="text-xs text-emerald-400 mr-1" /> Qat'iy: {formatMoney(st.fixedSalary)}
                                       </span>
                                     )}
                                   </div>
@@ -5288,7 +5315,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                               <td className="p-3.5 font-bold whitespace-nowrap font-mono tabular-nums text-xs">
                                 {isFullyPaid ? (
                                   <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-md text-[11px]">
-                                    ✓ To'liq to'langan
+                                    <span className="flex items-center gap-1 text-emerald-400"><Icon name="check_circle" className="text-xs" /> To'liq to'langan</span>
                                   </span>
                                 ) : (
                                   <span className={st.balanceToPay > 0 ? "text-rose-400" : "text-slate-400"}>
@@ -5305,7 +5332,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                     className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[11px] font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1 cursor-pointer"
                                     title="Oylik to'lash va harajatlar jadvaliga yozish"
                                   >
-                                    <span>💵</span>
+                                    <Icon name="payments" className="text-xs mr-1" />
                                     <span>To'lash</span>
                                   </button>
 
@@ -5327,16 +5354,14 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                     className="p-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 hover:text-white border border-white/[0.08] transition-all cursor-pointer text-xs"
                                     title="Tahrirlash"
                                   >
-                                    ✏️
+                                    <Icon name="edit" className="text-xs" />
                                   </button>
 
                                   <button
                                     onClick={() => handleDeleteStaff(st.id)}
                                     className="p-1.5 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 transition-colors text-xs font-bold cursor-pointer"
                                     title="O'chirish"
-                                  >
-                                    ✕
-                                  </button>
+                                  ><Icon name="close" className="text-xs" /></button>
                                 </div>
                               </td>
                             </tr>
@@ -5374,8 +5399,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             {activeTab === 'users' && (
               !isSuperAdmin ? (
                 <div className="p-10 rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-amber-500/30 text-center space-y-4 max-w-xl mx-auto shadow-2xl">
-                  <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-3xl flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
-                    🔒
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
+                    <Icon name="lock" className="text-3xl" />
                   </div>
                   <h2 className="text-xl font-extrabold text-white">Ruxsat Cheklangan</h2>
                   <p className="text-xs text-slate-300 leading-relaxed">
@@ -5393,8 +5418,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   {/* Super Admin Top Header Banner */}
                   <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-amber-950/40 border border-amber-500/30 flex flex-wrap items-center justify-between gap-4 shadow-xl backdrop-blur-xl">
                     <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-2xl shadow-lg shadow-amber-500/25 text-slate-950 font-black">
-                        👑
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
+                        <Icon name="admin_panel_settings" className="text-2xl" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2.5">
@@ -5434,8 +5459,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   {/* Summary Metric Counters */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="p-4.5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] flex items-center gap-3.5 shadow-xl">
-                      <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-lg text-amber-300 shadow-md">
-                        👥
+                      <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-md">
+                        <Icon name="groups" className="text-xl" />
                       </div>
                       <div>
                         <div className="text-[11px] text-slate-400 font-medium">Jami Adminlar</div>
@@ -5444,8 +5469,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     </div>
 
                     <div className="p-4.5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] flex items-center gap-3.5 shadow-xl">
-                      <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-lg text-indigo-300 shadow-md">
-                        💳
+                      <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-md">
+                        <Icon name="badge" className="text-xl" />
                       </div>
                       <div>
                         <div className="text-[11px] text-slate-400 font-medium">Kichik Adminlar (Kassirlar)</div>
@@ -5456,8 +5481,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     </div>
 
                     <div className="p-4.5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] flex items-center gap-3.5 shadow-xl">
-                      <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-lg text-emerald-300 shadow-md">
-                        📋
+                      <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-md">
+                        <Icon name="history" className="text-xl" />
                       </div>
                       <div>
                         <div className="text-[11px] text-slate-400 font-medium">Harakatlar Jurnali (Audit)</div>
@@ -5476,7 +5501,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                           : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/[0.08]'
                       }`}
                     >
-                      <span>👥</span>
+                      <Icon name="groups" className="text-base text-indigo-400" />
                       <span>Adminlar Ro'yxati</span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums ${adminSubTab === 'admins' ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-white/[0.08] text-slate-400'}`}>
                         {users.length}
@@ -5516,7 +5541,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-bold text-white shadow-md border ${
                                   isSuper ? 'bg-gradient-to-tr from-amber-500 to-orange-600 text-slate-950 border-amber-300/40' : 'bg-gradient-to-tr from-indigo-500 to-teal-500 text-white border-indigo-400/30'
                                 }`}>
-                                  {isSuper ? '👑' : u.fullName.charAt(0).toUpperCase()}
+                                  <Icon name={isSuper ? "shield_person" : "badge"} className="text-base" />
                                 </div>
                                 <div>
                                   <div className="font-bold text-white text-sm flex items-center gap-1.5">
@@ -5538,7 +5563,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                   ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
                                   : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
                               }`}>
-                                {isSuper ? '👑 Super Admin' : '💳 Kichik Admin'}
+                                {isSuper ? "Super Admin" : "Kichik Admin"}
                               </span>
                             </div>
 
@@ -5592,7 +5617,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       {/* Search & Filter Bar */}
                       <div className="p-3.5 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-white/[0.08] flex flex-wrap items-center gap-3 shadow-lg">
                         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-                          <span className="text-xs text-slate-400 font-bold pl-1">🔍</span>
+                          <Icon name="search" className="text-slate-400 text-xs mr-1" />
                           <input
                             type="text"
                             placeholder="Qidiruv (o'quvchi ismi, admin, summa, izoh)..."
@@ -5653,7 +5678,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                             className="px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 text-xs font-semibold border border-white/[0.08] transition-all flex items-center gap-1.5 cursor-pointer"
                             title="Jurnalni JSON fayl sifatida yuklab olish"
                           >
-                            <span>📥</span> Eksport
+                            <Icon name="download" className="text-xs mr-1" /> Eksport
                           </button>
 
                           <button
@@ -5667,7 +5692,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                             className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all cursor-pointer"
                             title="Jurnalni tozalash"
                           >
-                            <span>🗑️</span> Tozalash
+                            <Icon name="delete_sweep" className="text-xs mr-1" /> Tozalash
                           </button>
                         </div>
                       </div>
@@ -5693,7 +5718,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         if (filtered.length === 0) {
                           return (
                             <div className="p-12 text-center rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] space-y-2">
-                              <div className="text-3xl">📋</div>
+                              <Icon name="history" className="text-3xl text-slate-500" />
                               <div className="text-sm font-bold text-white">Hech qanday harakat topilmadi</div>
                               <p className="text-xs text-slate-400">
                                 Filtrlarni o'zgartirib ko'ring yoki yangi to'lov/harajat kiritib sinab ko'ring.
@@ -5728,19 +5753,19 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                                     if (isAmountEdit) {
                                       badgeClass = 'bg-amber-500/15 text-amber-300 border-amber-500/40';
-                                      badgeLabel = "✏️ Summa O'zgartirildi";
+                                      badgeLabel = "Summa O'zgartirildi";
                                     } else if (isDelete) {
                                       badgeClass = 'bg-rose-500/15 text-rose-300 border-rose-500/40';
-                                      badgeLabel = "❌ O'chirildi";
+                                      badgeLabel = "O'chirildi";
                                     } else if (isAdd) {
                                       badgeClass = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40';
                                       badgeLabel = "+ Yangi Kiritildi";
                                     } else if (isLogin) {
                                       badgeClass = 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40';
-                                      badgeLabel = log.actionType === 'LOGIN' ? '🔐 Tizimga Kirish' : '🚪 Chiqish';
+                                      badgeLabel = log.actionType === 'LOGIN' ? 'Tizimga Kirish' : 'Chiqish';
                                     } else if (log.actionType.includes('EDIT')) {
                                       badgeClass = 'bg-blue-500/15 text-blue-300 border-blue-500/40';
-                                      badgeLabel = "🔄 Tahrirlandi";
+                                      badgeLabel = "Tahrirlandi";
                                     }
 
                                     return (
@@ -5753,7 +5778,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                             <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
                                               isSuper ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
                                             }`}>
-                                              {isSuper ? '👑' : '💳'}
+                                              <Icon name={isSuper ? "shield_person" : "badge"} className="text-sm" />
                                             </span>
                                             <div>
                                               <div className="font-bold text-white text-xs">{log.adminName}</div>
@@ -5796,8 +5821,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               <div className="space-y-6">
                 <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-cyan-950/40 border border-white/[0.08] flex flex-wrap items-center justify-between gap-4 shadow-xl backdrop-blur-xl">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/15">
-                      ⚡
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/15">
+                      <Icon name="cloud" className="text-2xl" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2.5">
@@ -5822,14 +5847,14 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       disabled={isSyncing || !supabase}
                       className="px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-white font-bold text-xs border border-white/[0.1] transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-sm"
                     >
-                      <span>⬇️</span> Bulutdan Yuklab Olish (Pull)
+                      <Icon name="cloud_download" className="text-sm mr-1.5" /> Bulutdan Yuklab Olish (Pull)
                     </button>
                     <button
                       onClick={handleSyncToSupabase}
                       disabled={isSyncing || !supabase}
                       className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                     >
-                      <span>⬆️</span> {isSyncing ? 'Sinxronlanmoqda...' : "Bulutga Saqlash (Sync)"}
+                      <Icon name="cloud_upload" className="text-sm mr-1.5" /> {isSyncing ? 'Sinxronlanmoqda...' : "Bulutga Saqlash (Sync)"}
                     </button>
                   </div>
                 </div>
@@ -5837,7 +5862,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 {/* Configuration Card */}
                 <div className="p-6 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] space-y-4 shadow-xl">
                   <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span>🔑</span> Supabase API Sozlamalari
+                    <Icon name="key" className="text-sm mr-1.5 text-cyan-400" /> Supabase API Sozlamalari
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -5888,7 +5913,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                        <span>📋</span> Supabase SQL Editor Skripti (Jadvallarni yaratish)
+                        <Icon name="terminal" className="text-sm mr-1.5 text-indigo-400" /> Supabase SQL Editor Skripti (Jadvallarni yaratish)
                       </h3>
                       <p className="text-xs text-slate-400 mt-0.5">
                         Supabase loyihangizda SQL Editor bo'limiga kirib, ushbu kodni nusxalang va "Run" tugmasini bosing:
@@ -5897,11 +5922,11 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
-                        showToast("SQL skripti clipboardga nusxalandi! ✅");
+                        showToast("SQL skripti clipboardga nusxalandi.");
                       }}
                       className="px-3.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all cursor-pointer"
                     >
-                      📋 Nusxa olish (Copy SQL)
+                      <Icon name="content_copy" className="text-xs mr-1" /> Nusxa olish (Copy SQL)
                     </button>
                   </div>
                   <pre className="p-4 rounded-xl bg-slate-950 border border-white/[0.08] text-slate-300 font-mono text-xs overflow-x-auto max-h-72">
@@ -5922,17 +5947,17 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 
                 <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
                   <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span className="text-base">💳</span>
+                    <Icon name="payments" className="text-base text-emerald-400 mr-1" />
                     <span>{formData.editId ? "To'lovni Tahrirlash" : "To'lov Kiritish / Qabul Qilish"}</span>
                   </h3>
-                  <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer">✕</button>
+                  <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"><Icon name="close" className="text-sm" /></button>
                 </div>
 
                 {/* RBAC Notification Banner */}
                 {formData.editId && (
                   !isSuperAdmin ? (
                     <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2.5">
-                      <span className="text-base">🔒</span>
+                      <Icon name="lock" className="text-base text-amber-400 shrink-0" />
                       <div>
                         <div className="font-bold">Summani o'zgartirish cheklangan</div>
                         <div className="text-[11px] text-slate-300">Kichik adminlar to'lov summasini o'zgartira olmaydi. Summa maydonlari qulflangan.</div>
@@ -5940,7 +5965,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     </div>
                   ) : (
                     <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2.5">
-                      <span className="text-base">👑</span>
+                      <Icon name="shield_person" className="text-base text-emerald-400 shrink-0" />
                       <div>
                         <div className="font-bold">Super Admin: Summani o'zgartirish</div>
                         <div className="text-[11px] text-slate-300">O'zgartirilgan har bir summa audit tarixida (eski va yangi holati) saqlanadi.</div>
@@ -6014,7 +6039,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         onFocus={() => setIsAutocompleteOpen(true)}
                         className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-950/70 text-white text-xs border border-indigo-500/40 focus:outline-none focus:border-indigo-400 font-medium"
                       />
-                      <span className="absolute left-3 top-2.5 text-xs text-slate-400">🔍</span>
+                      <Icon name="search" className="absolute left-3 top-2.5 text-xs text-slate-400" />
                     </div>
 
                     {/* Autocomplete Dropdown */}
@@ -6129,7 +6154,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     </div>
                   </div>
                   <div className="text-[10px] text-slate-400">
-                    💡 Summa: <span className="text-amber-300 font-mono font-bold">500</span> yozilsa ➔ <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand((formData.click || 0) + (formData.naqd || 0)))}</span>
+                    Summa: <span className="text-amber-300 font-mono font-bold">500</span> yozilsa → <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand((formData.click || 0) + (formData.naqd || 0)))}</span>
                   </div>
 
                   {/* Super Admin Edit Reason if editing an existing payment */}
@@ -6213,8 +6238,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 
                 <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center text-lg font-bold">
-                      🔄
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold">
+                      <Icon name="history" className="text-xl" />
                     </div>
                     <div>
                       <h3 className="font-bold text-white text-sm flex items-center gap-2">
@@ -6231,7 +6256,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   <button
                     onClick={() => setHistoryModalPayment(null)}
                     className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer"
-                  >✕</button>
+                  ><Icon name="close" className="text-xs" /></button>
                 </div>
 
                 {/* Current State Summary Card */}
@@ -6261,7 +6286,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                               #{historyModalPayment.history.length - idx} O'zgarish
                             </span>
                             <span className="text-xs font-bold text-white flex items-center gap-1">
-                              <span>👑</span> {rev.changedBy || 'Super Admin'}
+                              <Icon name="shield_person" className="text-xs text-amber-400 mr-1" /> {rev.changedBy || 'Super Admin'}
                             </span>
                           </div>
                           <span className="text-[11px] text-slate-400 font-mono">{rev.changedAt}</span>
@@ -6272,7 +6297,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                           <div className="text-slate-400">
                             Eski summa: <span className="line-through text-rose-400 font-bold">{formatMoney(rev.oldTotal)}</span>
                           </div>
-                          <span className="text-slate-500">➔</span>
+                          <span className="text-slate-500">→</span>
                           <div className="text-emerald-400 font-bold">
                             Yangi summa: <span className="text-emerald-300">{formatMoney(rev.newTotal)}</span>
                           </div>
@@ -6291,7 +6316,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                                 <span className="text-slate-500">•</span>
                                 <span className="text-slate-300">{ch.field}:</span>
                                 <span className="line-through text-rose-400 font-mono">{formatMoney(ch.oldVal)}</span>
-                                <span>➔</span>
+                                <span>→</span>
                                 <span className="text-emerald-400 font-mono font-semibold">{formatMoney(ch.newVal)}</span>
                               </div>
                             ))}
@@ -6307,7 +6332,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     ))
                   ) : (
                     <div className="p-8 text-center rounded-2xl bg-slate-950/40 border border-white/[0.05] text-slate-400 text-xs">
-                      <span className="text-2xl block mb-2">📋</span>
+                      <Icon name="history" className="text-3xl text-slate-500 block mb-2 mx-auto" />
                       Bu to'lov bo'yicha summa hali o'zgartirilmagan. Dastlabki kiritilgan qiymat saqlanib turibdi.
                     </div>
                   )}
@@ -6333,10 +6358,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
                   <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span className="text-indigo-400">👤</span>
+                    <Icon name="person" className="text-lg text-indigo-400 mr-1" />
                     <span>{studentForm.id ? "O'quvchi Ma'lumotlari" : "Yangi O'quvchi Qo'shish"}</span>
                   </h3>
-                  <button onClick={() => setIsStudentModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer">✕</button>
+                  <button onClick={() => setIsStudentModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"><Icon name="close" className="text-sm" /></button>
                 </div>
 
                 <form onSubmit={handleSaveStudent} className="space-y-3.5">
@@ -6350,7 +6375,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       onClick={() => setStudentForm({ ...studentForm, id: generateStudentId() })}
                       className="px-3 py-1.5 rounded-xl bg-indigo-600/40 hover:bg-indigo-600/60 text-indigo-200 text-xs font-semibold border border-indigo-500/40 transition-all cursor-pointer"
                     >
-                      🔄 Yangi ID
+                      Yangi ID
                     </button>
                   </div>
 
@@ -6417,7 +6442,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-emerald-400 font-bold font-mono text-xs border border-white/[0.08] focus:outline-none focus:border-emerald-500"
                       />
                       <div className="text-[10px] text-slate-400 mt-1">
-                        💡 Summa: <span className="text-amber-300 font-mono font-bold">500</span> ➔ <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand(studentForm.monthlyFee || 0))}</span>
+                        Summa: <span className="text-amber-300 font-mono font-bold">500</span> → <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand(studentForm.monthlyFee || 0))}</span>
                       </div>
                     </div>
                   </div>
@@ -6440,8 +6465,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] focus:outline-none focus:border-indigo-500"
                       >
                         <option value="active">● Faol (O'qimoqda)</option>
-                        <option value="paused">⏸ To'xtatgan</option>
-                        <option value="graduated">🎓 Bitirgan</option>
+                        <option value="paused">To'xtatgan</option>
+                        <option value="graduated">Bitirgan</option>
                       </select>
                     </div>
                   </div>
@@ -6474,10 +6499,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
                   <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span className="text-purple-400">🏫</span>
+                    <Icon name="school" className="text-lg text-purple-400 mr-1" />
                     <span>{groupForm.id ? "Guruh Ma'lumotlarini Tahrirlash" : "Yangi Guruh Qo'shish"}</span>
                   </h3>
-                  <button onClick={() => setIsGroupModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer">✕</button>
+                  <button onClick={() => setIsGroupModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"><Icon name="close" className="text-sm" /></button>
                 </div>
 
                 <form onSubmit={handleSaveGroup} className="space-y-3.5">
@@ -6515,7 +6540,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     </div>
                   </div>
                   <div className="text-[10px] text-slate-400">
-                    💡 Summa: <span className="text-amber-300 font-mono font-bold">500</span> yozilsa ➔ <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand(groupForm.fee || 0))}</span>
+                    Summa: <span className="text-amber-300 font-mono font-bold">500</span> yozilsa → <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand(groupForm.fee || 0))}</span>
                   </div>
 
                   <div>
@@ -6588,10 +6613,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
                   <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span className="text-amber-400">👔</span>
+                    <Icon name="badge" className="text-lg text-amber-400 mr-1" />
                     <span>{staffForm.id ? "Xodim Ma'lumotlarini Tahrirlash" : "Yangi Ustoz / Xodim Qo'shish"}</span>
                   </h3>
-                  <button onClick={() => setIsStaffModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer">✕</button>
+                  <button onClick={() => setIsStaffModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"><Icon name="close" className="text-sm" /></button>
                 </div>
 
                 <form onSubmit={handleSaveStaff} className="space-y-4">
@@ -6608,7 +6633,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         }`}
                       >
                         <div className="text-sm font-bold flex items-center gap-1.5 mb-1">
-                          <span>🎓</span> Ustoz (O'qituvchi)
+                          <Icon name="school" className="text-xs mr-1" /> Ustoz (O'qituvchi)
                         </div>
                         <div className="text-[10px] text-amber-300/80 leading-snug">
                           Guruhlar tushumidan belgilangan foiz (%) bo'yicha hisoblanadi
@@ -6625,7 +6650,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         }`}
                       >
                         <div className="text-sm font-bold flex items-center gap-1.5 mb-1">
-                          <span>💼</span> Boshqa Xodim
+                          <Icon name="badge" className="text-xs mr-1" /> Boshqa Xodim
                         </div>
                         <div className="text-[10px] text-indigo-300/80 leading-snug">
                           Qat'iy oylik (Admin, Menejer, Tozalik va h.k.)
@@ -6673,7 +6698,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       <div>
                         <label className="block text-xs font-bold text-amber-300 mb-1.5 flex items-center justify-between">
                           <span className="flex items-center gap-1.5">
-                            <span>📊</span> Ustozning Foiz Stavkasi (%) *
+                            Ustozning Foiz Stavkasi (%) *
                           </span>
                           <span className="text-[11px] text-slate-400 font-normal">
                             (Qo'lda kiritish yoki tezkor tanlash)
@@ -6719,13 +6744,13 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       </div>
 
                       <p className="text-[11px] text-slate-300">
-                        💡 Ustozga biriktirilgan guruhlar oylik tushumining <strong className="text-amber-400 font-bold">{staffForm.percent || 0}%</strong> qismi avtomatik oylik hisoblanadi.
+                        Ustozga biriktirilgan guruhlar oylik tushumining <strong className="text-amber-400 font-bold">{staffForm.percent || 0}%</strong> qismi avtomatik oylik hisoblanadi.
                       </p>
                     </div>
                   ) : (
                     <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 space-y-2">
                       <label className="block text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-                        <span>💰</span> Qat'iy Oylik Maoshi (so'm) *
+                        Qat'iy Oylik Maoshi (so'm) *
                       </label>
                       <input
                         type="text" required
@@ -6736,7 +6761,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         placeholder="3500000"
                       />
                       <p className="text-[10px] text-slate-300">
-                        💡 Masalan: <span className="text-amber-300 font-mono font-bold">500</span> yozilsa ➔ <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand(staffForm.fixedSalary || 0))}</span>
+                        Masalan: <span className="text-amber-300 font-mono font-bold">500</span> yozilsa → <span className="text-emerald-400 font-mono font-bold">{formatMoney(autoExpandThousand(staffForm.fixedSalary || 0))}</span>
                       </p>
                     </div>
                   )}
@@ -6759,8 +6784,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] focus:outline-none focus:border-amber-500"
                       >
                         <option value="active">● Faol (Ishlamoqda)</option>
-                        <option value="vacation">🏖️ Ta'tilda</option>
-                        <option value="inactive">⏸ Faol emas</option>
+                        <option value="vacation">Ta'tilda</option>
+                        <option value="inactive">Faol emas</option>
                       </select>
                     </div>
                   </div>
@@ -6793,10 +6818,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
                   <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span className="text-emerald-400">🗓️</span>
+                    <Icon name="calendar_month" className="text-lg text-emerald-400 mr-1" />
                     <span>Yangi Oy Qo'shish</span>
                   </h3>
-                  <button onClick={() => setIsMonthModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer">✕</button>
+                  <button onClick={() => setIsMonthModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"><Icon name="close" className="text-sm" /></button>
                 </div>
 
                 <form onSubmit={handleSaveNewMonthModal} className="space-y-4">
@@ -6819,7 +6844,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       onClick={() => setNewMonthInput(getNextMonthString(months[months.length - 1]))}
                       className="px-3.5 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center justify-between transition-all text-left cursor-pointer"
                     >
-                      <span>👉 {getNextMonthString(months[months.length - 1])}</span>
+                      <span>{getNextMonthString(months[months.length - 1])}</span>
                       <span className="text-[10px] text-emerald-400 font-bold">Tanlash</span>
                     </button>
                   </div>
@@ -6852,9 +6877,9 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
                   <h3 className="font-bold text-white flex items-center gap-2 text-sm">
-                    <span className="text-rose-400">🗑️</span> Oyni O'chirish
+                    <Icon name="delete" className="text-lg text-rose-400 mr-1" /> Oyni O'chirish
                   </h3>
-                  <button onClick={() => setMonthToDeleteConfirm(null)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer">✕</button>
+                  <button onClick={() => setMonthToDeleteConfirm(null)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"><Icon name="close" className="text-sm" /></button>
                 </div>
 
                 <div className="space-y-3 text-xs text-slate-300">
@@ -6869,7 +6894,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       return (
                         <div className="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-rose-300 space-y-1">
                           <div className="font-bold flex items-center gap-1.5 text-rose-400">
-                            <span>⚠️</span> Ushbu oyda ma'lumotlar mavjud:
+                            <Icon name="warning" className="text-sm text-rose-400 mr-1" /> Ushbu oyda ma'lumotlar mavjud:
                           </div>
                           <div className="text-[11px] text-slate-300 leading-relaxed font-mono">
                             • {pCount} ta to'lov yozuvi<br/>
@@ -6911,10 +6936,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
                   <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span className="text-rose-400">📤</span>
+                    <Icon name="receipt_long" className="text-lg text-rose-400 mr-1" />
                     <span>Harajat Kiritish</span>
                   </h3>
-                  <button onClick={() => setIsExpenseModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer">✕</button>
+                  <button onClick={() => setIsExpenseModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"><Icon name="close" className="text-sm" /></button>
                 </div>
 
                 <form onSubmit={handleSaveExpense} className="space-y-3.5">
@@ -6971,7 +6996,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         placeholder="0"
                       />
                       <div className="text-[10px] text-slate-400 mt-1">
-                        💡 <span className="text-amber-300 font-mono font-bold">500</span> ➔ <span className="text-rose-400 font-mono font-bold">{formatMoney(autoExpandThousand(expenseForm.amount || 0))}</span>
+                        <span className="text-amber-300 font-mono font-bold">500</span> → <span className="text-rose-400 font-mono font-bold">{formatMoney(autoExpandThousand(expenseForm.amount || 0))}</span>
                       </div>
                     </div>
                     <div>
@@ -7047,10 +7072,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5">
                   <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span className="text-amber-400">👑</span>
+                    <Icon name="shield_person" className="text-base text-amber-400 mr-2" />
                     <span>{userForm.id ? "Admin Ma'lumotlarini Tahrirlash" : "Yangi Admin Qo'shish"}</span>
                   </h3>
-                  <button onClick={() => setIsUserModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all cursor-pointer">✕</button>
+                  <button onClick={() => setIsUserModalOpen(false)} className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"><Icon name="close" className="text-sm" /></button>
                 </div>
 
                 <form onSubmit={handleSaveUser} className="space-y-3.5">
@@ -7106,8 +7131,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         onChange={e => setUserForm({ ...userForm, role: e.target.value })}
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-amber-300 font-semibold text-xs border border-white/[0.08] focus:outline-none focus:border-amber-500"
                       >
-                        <option value="admin">💳 Kichik Admin (Kassir)</option>
-                        <option value="super_admin">👑 Super Admin</option>
+                        <option value="admin">Kichik Admin (Kassir)</option>
+                        <option value="super_admin">Super Admin</option>
                       </select>
                     </div>
                   </div>
@@ -7116,11 +7141,11 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     <div className="font-bold text-slate-300">Belgilangan huquq:</div>
                     {userForm.role === 'super_admin' ? (
                       <p className="text-amber-300/90 leading-relaxed">
-                        👑 <strong>Super Admin</strong>: Barcha bo'limlarni boshqaradi, to'lov summasini tahrirlay oladi, adminlarni qo'shadi va barcha harakatlarni audit qiladi.
+                        <strong>Super Admin</strong>: Barcha bo'limlarni boshqaradi, to'lov summasini tahrirlay oladi, adminlarni qo'shadi va barcha harakatlarni audit qiladi.
                       </p>
                     ) : (
                       <p className="text-indigo-300/90 leading-relaxed">
-                        💳 <strong>Kichik Admin</strong>: To'lov, o'quvchi va guruhlarni kiritadi. Lekin kiritilgan <u>summalarni o'zgartira olmaydi</u> (summa maydonlari qulflanadi).
+                        <strong>Kichik Admin</strong>: To'lov, o'quvchi va guruhlarni kiritadi. Lekin kiritilgan <u>summalarni o'zgartira olmaydi</u> (summa maydonlari qulflanadi).
                       </p>
                     )}
                   </div>
@@ -7151,8 +7176,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               <div className="w-full max-w-lg rounded-3xl bg-slate-900 border border-emerald-500/30 p-6 shadow-2xl shadow-emerald-500/10 space-y-5">
                 <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-xl">
-                      📊
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center">
+                      <Icon name="upload_file" className="text-xl" />
                     </div>
                     <div>
                       <h3 className="text-base font-extrabold text-white flex items-center gap-2">
@@ -7167,14 +7192,12 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   <button
                     onClick={() => setIsExcelImportModalOpen(false)}
                     className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
-                  >
-                    ✕
-                  </button>
+                  ><Icon name="close" className="text-xs" /></button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
-                    <div className="text-[11px] text-slate-400 font-medium">💳 Yangi To'lovlar</div>
+                    <div className="text-[11px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="payments" className="text-xs text-emerald-400" /> Yangi To'lovlar</div>
                     <div className="text-lg font-extrabold text-emerald-400 mt-0.5">
                       {excelImportSummary.paymentsCount} ta
                     </div>
@@ -7184,7 +7207,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   </div>
 
                   <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
-                    <div className="text-[11px] text-slate-400 font-medium">💸 Yangi Xarajatlar</div>
+                    <div className="text-[11px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="receipt_long" className="text-xs text-rose-400" /> Yangi Xarajatlar</div>
                     <div className="text-lg font-extrabold text-rose-400 mt-0.5">
                       {excelImportSummary.expensesCount} ta
                     </div>
@@ -7194,7 +7217,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   </div>
 
                   <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
-                    <div className="text-[11px] text-slate-400 font-medium">👥 Yangi O'quvchilar</div>
+                    <div className="text-[11px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="groups" className="text-xs text-indigo-400" /> Yangi O'quvchilar</div>
                     <div className="text-lg font-extrabold text-indigo-400 mt-0.5">
                       {excelImportSummary.studentsCount} ta
                     </div>
@@ -7204,7 +7227,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   </div>
 
                   <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
-                    <div className="text-[11px] text-slate-400 font-medium">⚠️ Qarzdorlar</div>
+                    <div className="text-[11px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="warning" className="text-xs text-rose-400" /> Qarzdorlar</div>
                     <div className="text-lg font-extrabold text-amber-400 mt-0.5">
                       {excelImportSummary.debtorsCount} ta
                     </div>
@@ -7231,7 +7254,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     onClick={() => setIsExcelImportModalOpen(false)}
                     className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
                   >
-                    Ko'rish va Davom ettirish ✅
+                    Ko'rish va Davom ettirish
                   </button>
                 </div>
               </div>
@@ -7246,8 +7269,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-emerald-500/40 p-6 shadow-2xl shadow-emerald-500/20 space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center text-xl">
-                      📅
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center">
+                      <Icon name="calendar_month" className="text-xl" />
                     </div>
                     <div>
                       <h3 className="text-sm font-extrabold text-white">Qaysi oyning ma'lumotlari?</h3>
@@ -7259,9 +7282,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   <button
                     onClick={() => { setIsMonthSelectModalOpen(false); setPendingExcelUpload(null); }}
                     className="w-8 h-8 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
-                  >
-                    ✕
-                  </button>
+                  ><Icon name="close" className="text-xs" /></button>
                 </div>
 
                 <div className="space-y-2">
@@ -7303,7 +7324,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-between gap-3 shadow-inner">
                   <div>
                     <div className="text-xs font-bold text-purple-200 flex items-center gap-1.5">
-                      <span>✨</span> Standart Excel Shablon kerakmi?
+                      <Icon name="help_outline" className="text-sm mr-1 text-cyan-400" /> Standart Excel Shablon kerakmi?
                     </div>
                     <div className="text-[11px] text-purple-300/80 leading-tight mt-0.5">
                       To'lovlar, Ustozlar oyligi, Markaz va Founder xarajatlari andozasi
@@ -7314,13 +7335,13 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     download="EduFinance_Moliya_Shabloni.xlsx"
                     className="px-3 py-1.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-slate-950 font-extrabold text-xs transition-all flex items-center gap-1 whitespace-nowrap shadow-md shadow-purple-500/20 cursor-pointer"
                   >
-                    📥 Shablon
+                    Shablon
                   </a>
                 </div>
 
                 {/* Listlar haqida qisqacha ma'lumot */}
                 <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06] space-y-1">
-                  <div className="text-[11px] text-slate-400 font-medium">📑 Fayldagi listlar:</div>
+                  <div className="text-[11px] text-slate-400 font-medium flex items-center gap-1"><Icon name="description" className="text-xs" /> Fayldagi listlar:</div>
                   <div className="text-xs text-emerald-400 font-mono font-semibold">
                     {pendingExcelUpload.sheetNames.join(' • ')}
                   </div>
@@ -7353,7 +7374,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     onClick={executeExcelImportWithMonth}
                     className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <span>🚀</span>
+                    <Icon name="upload" className="text-sm mr-1.5" />
                     <span>Yuklash va Hisoblash</span>
                   </button>
                 </div>
@@ -7364,7 +7385,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           {/* ===== TOAST NOTIFICATION ===== */}
           {toastMsg && (
             <div className="fixed bottom-6 right-6 z-50 px-4.5 py-3 rounded-2xl bg-slate-900/95 backdrop-blur-xl text-emerald-400 border border-emerald-500/40 text-xs font-bold shadow-2xl flex items-center gap-2.5 transition-all animate-fade-in">
-              <span className="text-base">✨</span>
+              
               <span>{toastMsg}</span>
             </div>
           )}
