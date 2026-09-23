@@ -1294,6 +1294,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       const [studentSearchTerm, setStudentSearchTerm] = useState('');
       const [expenseTypeFilter, setExpenseTypeFilter] = useState('all'); // 'all' | 'Founder' | 'Kadrlar' | 'Markaz'
       const [studentFilterGroup, setStudentFilterGroup] = useState('all');
+      const [studentFilterStatus, setStudentFilterStatus] = useState('all'); // 'all' | 'active' | 'inactive' | 'paused'
 
       // Group Modal
       const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -1753,9 +1754,75 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 ? headerRowIdx + 2 
                 : headerRowIdx + 1;
 
+              let isDroppedMode = false;
+              let droppedStudentsCount = 0;
+
               for (let i = rowDataStart; i < pRows.length; i++) {
                 const row = pRows[i];
                 if (!row || row.length === 0) continue;
+
+                const rowFullText = row.map(c => String(c || '')).join(' ').toLowerCase().replace(/[`'ʻ’ʼ]/g, "'");
+
+                // Chiqib ketgan o'quvchilar bloki boshlanishi
+                if (rowFullText.includes('chiqib ketgan') || rowFullText.includes('ketganlar') || rowFullText.includes('tark etgan')) {
+                  isDroppedMode = true;
+                  continue;
+                }
+
+                // Chiqib ketgan o'quvchini qayta ishlash
+                if (isDroppedMode) {
+                  let rawName = String(row[1] || row[0] || '').trim();
+                  if (/^\d+$/.test(rawName) && row[1]) {
+                    rawName = String(row[1]).trim();
+                  }
+                  if (!rawName || /^\d+$/.test(rawName) || rawName.toLowerCase().startsWith('№') || rawName.toLowerCase().startsWith('o\'quvchi') || rawName.toLowerCase().startsWith('jami') || rawName.length < 3) {
+                    continue;
+                  }
+
+                  let droppedGroup = '';
+                  for (let c = 2; c < row.length; c++) {
+                    const val = String(row[c] || '').trim();
+                    if (val && !/^\+?\d+$/.test(val) && isNaN(Number(val)) && val.length >= 2 && !val.toLowerCase().startsWith('chiqib')) {
+                      droppedGroup = val;
+                    }
+                  }
+                  const cleanGrp = droppedGroup ? cleanGroupName(droppedGroup) : 'Asosiy guruh';
+
+                  let existingStudent = updatedStudents.find(s => isNameMatch(s.name, rawName));
+                  if (existingStudent) {
+                    existingStudent.status = 'inactive';
+                    if (cleanGrp && cleanGrp !== 'Asosiy guruh') {
+                      existingStudent.group = cleanGrp;
+                    }
+                  } else {
+                    existingStudent = {
+                      id: generateStudentId(),
+                      name: formatProperName(rawName),
+                      phone: '+998 ',
+                      parentPhone: '+998 ',
+                      group: cleanGrp,
+                      monthlyFee: 0,
+                      status: 'inactive',
+                      joinedDate: getTodayInputFormat()
+                    };
+                    updatedStudents.push(existingStudent);
+                    newStudentsCount++;
+                  }
+                  droppedStudentsCount++;
+
+                  if (cleanGrp && cleanGrp !== 'Asosiy guruh' && !updatedGroups.some(g => cleanGroupName(g.name).toLowerCase() === cleanGrp.toLowerCase())) {
+                    updatedGroups.push({
+                      id: makeGrpId(),
+                      name: cleanGrp,
+                      category: 'Dasturlash',
+                      fee: 750000,
+                      teacher: 'Asosiy Ustoz',
+                      days: 'Dush-Chor-Jum (14:00)',
+                      room: '1-Xona'
+                    });
+                  }
+                  continue;
+                }
 
                 let rawName = String(row[colName] || '').trim();
                 if (/^\d+$/.test(rawName) && row[colName + 1] && typeof row[colName + 1] === 'string' && !/^\d+$/.test(String(row[colName + 1]).trim())) {
@@ -1765,10 +1832,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   continue;
                 }
 
-                const rowFullText = row.map(c => String(c || '')).join(' ');
-                
                 // Jadval ostidagi hisob-kitoblar / ustozlar oyligi qismini to'xtatish
-                if (rowFullText.toLowerCase().includes('olingan to`lov') || rowFullText.toLowerCase().includes("olingan to'lov") || rowFullText.toLowerCase().includes('olishi kerak') || row[2] === 0.17 || row[1] === 0.17) {
+                if (rowFullText.includes('olingan to`lov') || rowFullText.includes("olingan to'lov") || rowFullText.includes('olishi kerak') || row[2] === 0.17 || row[1] === 0.17) {
                   break;
                 }
 
@@ -2501,6 +2566,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             month: targetMonth,
             paymentsCount: newPaymentsCount,
             studentsCount: newStudentsCount,
+            droppedStudentsCount: droppedStudentsCount,
             matchedStudentsCount: matchedStudentsCount,
             expensesCount: newExpensesCount,
             staffCount: newStaffCount,
@@ -3890,14 +3956,17 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       // Filtered Students in Students View
       const filteredStudentsList = useMemo(() => {
         return students.filter(s => {
+          if (studentFilterStatus === 'active' && s.status !== 'active') return false;
+          if (studentFilterStatus === 'inactive' && s.status !== 'inactive' && s.status !== 'dropped') return false;
+          if (studentFilterStatus === 'paused' && s.status !== 'paused') return false;
           if (studentFilterGroup !== 'all' && s.group !== studentFilterGroup) return false;
           if (studentSearchTerm) {
             const q = studentSearchTerm.toLowerCase();
-            return s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q) || (s.phone && s.phone.includes(q));
+            return s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q) || (s.phone && s.phone.includes(q)) || (s.group && s.group.toLowerCase().includes(q));
           }
           return true;
         });
-      }, [students, studentSearchTerm, studentFilterGroup]);
+      }, [students, studentSearchTerm, studentFilterGroup, studentFilterStatus]);
 
       // ==========================================
       // PAYROLL & STAFF CALCULATIONS
@@ -4397,6 +4466,48 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   </div>
                 </div>
 
+                {/* STUDENTS OVERVIEW & STATS BAR */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-indigo-500/25 flex items-center justify-between shadow-lg">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold">
+                        <Icon name="groups" className="text-base" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 font-medium">Jami O'quvchilar</div>
+                        <div className="text-base font-black text-white font-mono tabular-nums">{students.length} ta</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-bold">Bazada</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-emerald-500/25 flex items-center justify-between shadow-lg">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold">
+                        <Icon name="check_circle" className="text-base" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 font-medium">Faol O'quvchilar</div>
+                        <div className="text-base font-black text-emerald-400 font-mono tabular-nums">{students.filter(s => s.status === 'active').length} ta</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold">O'qimoqda</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-rose-500/25 flex items-center justify-between shadow-lg">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center font-bold">
+                        <Icon name="person_remove" className="text-base" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 font-medium">Chiqib Ketgan O'quvchilar</div>
+                        <div className="text-base font-black text-rose-400 font-mono tabular-nums">{students.filter(s => s.status === 'inactive' || s.status === 'dropped').length} ta</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 font-bold">Tark etgan</span>
+                  </div>
+                </div>
+
                 {/* MONTH ACTION & ROLLOVER BANNER */}
                 {selectedMonth !== 'all' && (
                   <div className="p-4.5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-indigo-950/40 border border-white/[0.08] flex flex-wrap items-center justify-between gap-4 shadow-xl backdrop-blur-xl">
@@ -4875,16 +4986,22 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       <Icon name="groups" className="text-2xl" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-2.5 flex-wrap">
                         <h2 className="text-base font-extrabold text-white">
                           O'quvchilar Bazasi (Talabalar Ro'yxati)
                         </h2>
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold font-mono tabular-nums">
                           Jami: {students.length} ta
                         </span>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold font-mono tabular-nums">
+                          Faol: {students.filter(s => s.status === 'active').length} ta
+                        </span>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold font-mono tabular-nums">
+                          Chiqib ketgan: {students.filter(s => s.status === 'inactive' || s.status === 'dropped').length} ta
+                        </span>
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Har bir o'quvchi bu yerga faqat bir marta kiritiladi va unga random unikal ID (STU-XXXX) beriladi. To'lovda ismi yoki ID orqali avtomatik topiladi.
+                        Har bir o'quvchi bu yerga faqat bir marta kiritiladi va unga unikal ID (STU-XXXX) beriladi. Chiqib ketgan talabalar holati alohida belgilanadi.
                       </p>
                     </div>
                   </div>
@@ -4916,8 +5033,33 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     placeholder="Ism, ID (masalan STU-...) yoki telefon..."
                     value={studentSearchTerm}
                     onChange={e => setStudentSearchTerm(e.target.value)}
-                    className="px-3.5 py-2 rounded-xl bg-slate-800/80 text-white text-xs border border-white/[0.1] w-72 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 font-medium placeholder:text-slate-500 transition-all"
+                    className="px-3.5 py-2 rounded-xl bg-slate-800/80 text-white text-xs border border-white/[0.1] w-64 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 font-medium placeholder:text-slate-500 transition-all"
                   />
+                  
+                  {/* Status Filter Buttons */}
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950/60 border border-white/[0.06]">
+                    {[
+                      { id: 'all', label: 'Barchasi', count: students.length },
+                      { id: 'active', label: 'Faol', count: students.filter(s => s.status === 'active').length },
+                      { id: 'inactive', label: 'Chiqib ketgan', count: students.filter(s => s.status === 'inactive' || s.status === 'dropped').length },
+                      { id: 'paused', label: "To'xtatgan", count: students.filter(s => s.status === 'paused').length }
+                    ].map(st => (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() => setStudentFilterStatus(st.id)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                          studentFilterStatus === st.id
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        <span>{st.label}</span>
+                        <span className="text-[10px] font-mono opacity-80">({st.count})</span>
+                      </button>
+                    ))}
+                  </div>
+
                   <select
                     value={studentFilterGroup}
                     onChange={e => setStudentFilterGroup(e.target.value)}
@@ -4928,11 +5070,13 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       <option key={g.id} value={g.name}>{g.name}</option>
                     ))}
                   </select>
-                  {(studentSearchTerm || studentFilterGroup !== 'all') && (
+                  {(studentSearchTerm || studentFilterGroup !== 'all' || studentFilterStatus !== 'all') && (
                     <button
-                      onClick={() => { setStudentSearchTerm(''); setStudentFilterGroup('all'); }}
-                      className="px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-xs transition-all cursor-pointer font-semibold border border-white/[0.08]"
-                     className="px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-xs transition-all cursor-pointer font-semibold border border-white/[0.08] flex items-center gap-1"><Icon name="close" className="text-xs" /> Tozalash</button>
+                      onClick={() => { setStudentSearchTerm(''); setStudentFilterGroup('all'); setStudentFilterStatus('all'); }}
+                      className="px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-xs transition-all cursor-pointer font-semibold border border-white/[0.08] flex items-center gap-1"
+                    >
+                      <Icon name="close" className="text-xs" /> Tozalash
+                    </button>
                   )}
                   <span className="ml-auto text-xs text-slate-400 font-mono tabular-nums pr-1">{filteredStudentsList.length} ta o'quvchi topildi</span>
                 </div>
@@ -4950,7 +5094,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                           <th className="p-3.5 min-w-[180px] whitespace-nowrap">Guruh / Yo'nalish</th>
                           <th className="p-3.5 min-w-[130px] whitespace-nowrap text-emerald-400">Oylik To'lov</th>
                           <th className="p-3.5 min-w-[110px] whitespace-nowrap">Qo'shilgan</th>
-                          <th className="p-3.5 min-w-[110px] whitespace-nowrap">Holati</th>
+                          <th className="p-3.5 min-w-[120px] whitespace-nowrap">Holati</th>
                           <th className="p-3.5 min-w-[120px] whitespace-nowrap text-center">Amallar</th>
                         </tr>
                       </thead>
@@ -4967,7 +5111,11 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                             </td>
                             <td className="p-3.5 font-bold text-white whitespace-nowrap">
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500/20 to-teal-500/20 border border-indigo-500/30 text-indigo-300 flex items-center justify-center font-bold text-[10px] shrink-0">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
+                                  stu.status === 'active' 
+                                    ? 'bg-gradient-to-br from-indigo-500/20 to-teal-500/20 border-indigo-500/30 text-indigo-300'
+                                    : 'bg-rose-500/20 border-rose-500/30 text-rose-300'
+                                }`}>
                                   {stu.name ? stu.name.charAt(0).toUpperCase() : 'S'}
                                 </div>
                                 <span className="text-sm">{stu.name}</span>
@@ -4986,10 +5134,11 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                                 stu.status === 'active' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
                                 stu.status === 'paused' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
+                                (stu.status === 'inactive' || stu.status === 'dropped') ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' :
                                 'bg-slate-800 text-slate-400 border-slate-700'
                               }`}>
                                 <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                                {stu.status === 'active' ? 'Faol' : stu.status === 'paused' ? 'To\'xtatgan' : 'Bitirgan'}
+                                {stu.status === 'active' ? 'Faol' : stu.status === 'paused' ? "To'xtatgan" : (stu.status === 'inactive' || stu.status === 'dropped') ? 'Chiqib ketgan' : 'Bitirgan'}
                               </span>
                             </td>
                             <td className="p-3.5 whitespace-nowrap text-center">
@@ -6559,6 +6708,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         className="w-full px-3 py-2 rounded-xl bg-slate-950/70 text-white text-xs border border-white/[0.08] focus:outline-none focus:border-indigo-500"
                       >
                         <option value="active">● Faol (O'qimoqda)</option>
+                        <option value="inactive">✕ Chiqib ketgan</option>
                         <option value="paused">To'xtatgan</option>
                         <option value="graduated">Bitirgan</option>
                       </select>
@@ -7289,30 +7439,30 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   ><Icon name="close" className="text-xs" /></button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
-                    <div className="text-[11px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="payments" className="text-xs text-emerald-400" /> Yangi To'lovlar</div>
-                    <div className="text-lg font-extrabold text-emerald-400 mt-0.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                    <div className="text-[10px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="payments" className="text-xs text-emerald-400" /> To'lovlar</div>
+                    <div className="text-base font-extrabold text-emerald-400 mt-0.5">
                       {excelImportSummary.paymentsCount} ta
                     </div>
                     <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                      Jami: {formatMoney(excelImportSummary.totalIncome)}
+                      {formatMoney(excelImportSummary.totalIncome)}
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
-                    <div className="text-[11px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="receipt_long" className="text-xs text-rose-400" /> Yangi Xarajatlar</div>
-                    <div className="text-lg font-extrabold text-rose-400 mt-0.5">
+                  <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                    <div className="text-[10px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="receipt_long" className="text-xs text-rose-400" /> Xarajatlar</div>
+                    <div className="text-base font-extrabold text-rose-400 mt-0.5">
                       {excelImportSummary.expensesCount} ta
                     </div>
                     <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
-                      Jami: {formatMoney(excelImportSummary.totalExpense)}
+                      {formatMoney(excelImportSummary.totalExpense)}
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
-                    <div className="text-[11px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="groups" className="text-xs text-indigo-400" /> Yangi O'quvchilar</div>
-                    <div className="text-lg font-extrabold text-indigo-400 mt-0.5">
+                  <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                    <div className="text-[10px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="groups" className="text-xs text-indigo-400" /> Yangi Talabalar</div>
+                    <div className="text-base font-extrabold text-indigo-400 mt-0.5">
                       {excelImportSummary.studentsCount} ta
                     </div>
                     <div className="text-[10px] text-slate-400 mt-0.5">
@@ -7320,26 +7470,34 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
-                    <div className="text-[11px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="warning" className="text-xs text-rose-400" /> Qarzdorlar</div>
-                    <div className="text-lg font-extrabold text-amber-400 mt-0.5">
+                  <div className="p-3 rounded-2xl bg-slate-950/60 border border-rose-500/20">
+                    <div className="text-[10px] text-rose-300 font-medium flex items-center justify-center gap-1"><Icon name="person_remove" className="text-xs text-rose-400" /> Chiqib ketgan</div>
+                    <div className="text-base font-extrabold text-rose-400 mt-0.5">
+                      {excelImportSummary.droppedStudentsCount || 0} ta
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      Tark etganlar
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                    <div className="text-[10px] text-slate-400 font-medium flex items-center justify-center gap-1"><Icon name="warning" className="text-xs text-amber-400" /> Qarzdorlar</div>
+                    <div className="text-base font-extrabold text-amber-400 mt-0.5">
                       {excelImportSummary.debtorsCount} ta
                     </div>
                     <div className="text-[10px] text-slate-400 mt-0.5">
                       {excelImportSummary.manOlmaganmanCount > 0 ? `${excelImportSummary.manOlmaganmanCount} ta "Man olmaganman"` : "Qoldig'i borlar"}
                     </div>
                   </div>
-                </div>
 
-                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
-                  <div>
-                    <div className="text-[11px] text-emerald-300/80 font-bold uppercase tracking-wider">Hisoblangan Sof Foyda</div>
-                    <div className="text-xl font-extrabold font-mono text-emerald-400 mt-0.5">
+                  <div className="p-3 rounded-2xl bg-emerald-950/40 border border-emerald-500/30">
+                    <div className="text-[10px] text-emerald-300/80 font-bold uppercase tracking-wider">Sof Foyda</div>
+                    <div className="text-base font-extrabold font-mono text-emerald-400 mt-0.5">
                       {formatMoney(excelImportSummary.netProfit)}
                     </div>
-                  </div>
-                  <div className="text-xs px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 font-bold font-mono">
-                    {excelImportSummary.month}
+                    <div className="text-[10px] text-emerald-300/70 mt-0.5 font-mono">
+                      {excelImportSummary.month}
+                    </div>
                   </div>
                 </div>
 
