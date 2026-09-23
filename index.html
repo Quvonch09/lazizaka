@@ -363,69 +363,21 @@
     ];
 
     // Default Seed Data: Staff (Ustozlar & Xodimlar)
-    const DEFAULT_STAFF = [
-      { id: 'STF-101', name: 'Elnur Turdiyev', phone: '+998 90 123 45 67', role: 'teacher', position: 'Frontend ReactJS Ustozi', percent: 45, fixedSalary: 0, joinedDate: '2026-01-10', status: 'active' },
-      { id: 'STF-102', name: 'Sardorbek Karimov', phone: '+998 97 888 77 66', role: 'teacher', position: 'Python Backend Ustozi', percent: 40, fixedSalary: 0, joinedDate: '2026-01-15', status: 'active' },
-      { id: 'STF-103', name: 'Temur Saidov', phone: '+998 93 456 78 90', role: 'teacher', position: 'IELTS & Ingliz tili Ustozi', percent: 50, fixedSalary: 0, joinedDate: '2026-02-01', status: 'active' },
-      { id: 'STF-104', name: "Nigora Yo'ldosheva", phone: '+998 94 333 22 11', role: 'teacher', position: 'Grafik Dizayn Ustozi', percent: 40, fixedSalary: 0, joinedDate: '2026-02-15', status: 'active' },
-      { id: 'STF-105', name: 'Jasur Umarov', phone: '+998 95 123 99 88', role: 'teacher', position: 'Foundation Ustozi', percent: 35, fixedSalary: 0, joinedDate: '2026-03-01', status: 'active' },
-      { id: 'STF-106', name: 'Zilola Rahimova', phone: '+998 91 666 55 44', role: 'teacher', position: 'Kids IT Ustozi', percent: 40, fixedSalary: 0, joinedDate: '2026-03-10', status: 'active' },
-      { id: 'STF-201', name: 'Malika Rahimova', phone: '+998 90 987 65 43', role: 'staff', position: 'Bosh Administrator', percent: 0, fixedSalary: 3500000, joinedDate: '2026-01-05', status: 'active' },
-      { id: 'STF-202', name: 'Sherzod Qodirov', phone: '+998 99 111 22 33', role: 'staff', position: 'SMM & Marketing Menejeri', percent: 0, fixedSalary: 3000000, joinedDate: '2026-02-01', status: 'active' },
-      { id: 'STF-203', name: 'Gulbahor opa', phone: '+998 90 555 12 34', role: 'staff', position: "Tozalik va Xo'jalik xodimi", percent: 0, fixedSalary: 2000000, joinedDate: '2026-01-01', status: 'active' }
-    ];
+    const DEFAULT_STAFF = [];
 
     // Default Seed Data: Groups
-    const DEFAULT_GROUPS = [
-      { id: 'GRP-101', name: 'Frontend ReactJS (A1)', category: 'Dasturlash', fee: 750000, teacher: 'Elnur Turdiyev', days: 'Dush-Chor-Jum (14:00)', room: '1-Xona' },
-      { id: 'GRP-102', name: 'Python Backend (P1)', category: 'Dasturlash', fee: 750000, teacher: 'Sardorbek Karimov', days: 'Sesh-Pay-Shan (16:00)', room: '2-Xona' },
-      { id: 'GRP-103', name: 'IELTS Standard (B2)', category: 'Tillar', fee: 800000, teacher: 'Temur Saidov', days: 'Dush-Chor-Jum (10:00)', room: '3-Xona' },
-      { id: 'GRP-104', name: 'Graphic Design (D3)', category: 'Dizayn', fee: 900000, teacher: "Nigora Yo'ldosheva", days: 'Sesh-Pay-Shan (14:00)', room: '4-Xona' },
-      { id: 'GRP-105', name: 'Foundation (F1)', category: 'Dasturlash', fee: 600000, teacher: 'Jasur Umarov', days: 'Dush-Chor-Jum (16:00)', room: '1-Xona' },
-      { id: 'GRP-106', name: 'Kids IT (K1)', category: 'Bolalar', fee: 500000, teacher: 'Zilola Rahimova', days: 'Shanba-Yakshanba (11:00)', room: '2-Xona' }
-    ];
+    const DEFAULT_GROUPS = [];
 
     // Default Seed Data: Students (Added Once, has unique random ID)
-    const DEFAULT_STUDENTS = [
-      { id: 'STU-1042', name: 'Javohir Alimov', phone: '+998 90 123 45 67', parentPhone: '+998 91 987 65 43', group: 'Frontend ReactJS (A1)', monthlyFee: 750000, status: 'active', joinedDate: '2026-05-15' },
-      { id: 'STU-2851', name: 'Malika Saidova', phone: '+998 93 456 78 90', parentPhone: '+998 93 111 22 33', group: 'IELTS Standard (B2)', monthlyFee: 800000, status: 'active', joinedDate: '2026-06-01' },
-      { id: 'STU-3940', name: 'Sardorbek Karimov', phone: '+998 97 888 77 66', parentPhone: '+998 90 555 44 33', group: 'Python Backend (P1)', monthlyFee: 750000, status: 'active', joinedDate: '2026-06-10' },
-      { id: 'STU-4412', name: "Nigora Yo'ldosheva", phone: '+998 94 333 22 11', parentPhone: '+998 94 999 88 77', group: 'Graphic Design (D3)', monthlyFee: 900000, status: 'active', joinedDate: '2026-06-20' },
-      { id: 'STU-5829', name: 'Bekzod Rahmonov', phone: '+998 99 222 33 44', parentPhone: '+998 99 777 66 55', group: 'Frontend ReactJS (A1)', monthlyFee: 750000, status: 'active', joinedDate: '2026-07-05' },
-      { id: 'STU-6391', name: 'Dilnoza Axmedova', phone: '+998 91 666 55 44', parentPhone: '+998 91 222 11 00', group: 'IELTS Standard (B2)', monthlyFee: 800000, status: 'active', joinedDate: '2026-07-12' },
-      { id: 'STU-7724', name: 'Otabek Mirzayev', phone: '+998 90 777 88 99', parentPhone: '+998 90 444 33 22', group: 'Python Backend (P1)', monthlyFee: 750000, status: 'active', joinedDate: '2026-07-15' },
-      { id: 'STU-8815', name: 'Jasur Umarov', phone: '+998 95 123 99 88', parentPhone: '+998 95 444 55 66', group: 'Graphic Design (D3)', monthlyFee: 900000, status: 'active', joinedDate: '2026-08-01' }
-    ];
+    const DEFAULT_STUDENTS = [];
 
     // Default Seed Data: Months
-    const DEFAULT_MONTHS = ['Iyun 2026', 'Iyul 2026', 'Avgust 2026', 'Sentyabr 2026', 'Oktabr 2026'];
+    const DEFAULT_MONTHS = ['Avgust 2026', 'Sentyabr 2026'];
 
     // Default Seed Data: Payments
-    const DEFAULT_PAYMENTS = [
-      { id: 'PAY-1001', studentId: 'STU-1042', studentName: 'Javohir Alimov', phoneStudent: '+998 90 123 45 67', phoneParent: '+998 91 987 65 43', oylikTolov: 750000, naqd: 1000000, click: 1250000, group: 'Frontend ReactJS (A1)', paymentDate: '2026-06-05', month: 'Iyun 2026', paymentType: 'Click + Naqd', note: "3 oylik to'lov (2 250 000 so'm)", is3MonthPayment: true, bittaToliqSumma: 2250000, depozitBalansi: 1500000 },
-      { id: 'PAY-1002', studentId: 'STU-1042', studentName: 'Javohir Alimov', phoneStudent: '+998 90 123 45 67', phoneParent: '+998 91 987 65 43', oylikTolov: 750000, naqd: 0, click: 750000, group: 'Frontend ReactJS (A1)', paymentDate: '2026-06-05', month: 'Iyul 2026', paymentType: "Oldindan to'langan (3 oylik)", note: "Iyun depozitidan 750k ayirildi. Qolgan depozit: 750 000 so'm", isPrepaid: true, bittaToliqSumma: 2250000, depozitBalansi: 750000 },
-      { id: 'PAY-1003', studentId: 'STU-1042', studentName: 'Javohir Alimov', phoneStudent: '+998 90 123 45 67', phoneParent: '+998 91 987 65 43', oylikTolov: 750000, naqd: 0, click: 750000, group: 'Frontend ReactJS (A1)', paymentDate: '2026-06-05', month: 'Avgust 2026', paymentType: "Oldindan to'langan (3 oylik)", note: "Iyun depozitidan 750k ayirildi. Depozit yopildi (0 so'm)", isPrepaid: true, bittaToliqSumma: 2250000, depozitBalansi: 0 },
-      { id: 'PAY-1004', studentId: 'STU-2851', studentName: 'Malika Saidova', phoneStudent: '+998 93 456 78 90', phoneParent: '+998 93 111 22 33', oylikTolov: 800000, naqd: 0, click: 800000, group: 'IELTS Standard (B2)', paymentDate: '2026-08-10', month: 'Avgust 2026', paymentType: 'Click', note: "To'liq Click", is3MonthPayment: false, bittaToliqSumma: 0, depozitBalansi: 0 },
-      { id: 'PAY-1005', studentId: 'STU-3940', studentName: 'Sardorbek Karimov', phoneStudent: '+998 97 888 77 66', phoneParent: '+998 90 555 44 33', oylikTolov: 750000, naqd: 750000, click: 0, group: 'Python Backend (P1)', paymentDate: '2026-08-12', month: 'Avgust 2026', paymentType: 'Naqd', note: 'Kassa topshirildi', is3MonthPayment: false, bittaToliqSumma: 0, depozitBalansi: 0 },
-      { id: 'PAY-1006', studentId: 'STU-4412', studentName: "Nigora Yo'ldosheva", phoneStudent: '+998 94 333 22 11', phoneParent: '+998 94 999 88 77', oylikTolov: 900000, naqd: 500000, click: 0, group: 'Graphic Design (D3)', paymentDate: '2026-08-15', month: 'Avgust 2026', paymentType: 'Naqd', note: "Qoldiq 400k so'm", is3MonthPayment: false, bittaToliqSumma: 0, depozitBalansi: 0 },
-      { id: 'PAY-1007', studentId: 'STU-5829', studentName: 'Bekzod Rahmonov', phoneStudent: '+998 99 222 33 44', phoneParent: '+998 99 777 66 55', oylikTolov: 750000, naqd: 0, click: 0, group: 'Frontend ReactJS (A1)', paymentDate: '2026-08-01', month: 'Avgust 2026', paymentType: 'Kutilmoqda', note: 'SMS yuborildi', is3MonthPayment: false, bittaToliqSumma: 0, depozitBalansi: 0 },
-      { id: 'PAY-1008', studentId: 'STU-6391', studentName: 'Dilnoza Axmedova', phoneStudent: '+998 91 666 55 44', phoneParent: '+998 91 222 11 00', oylikTolov: 800000, naqd: 400000, click: 400000, group: 'IELTS Standard (B2)', paymentDate: '2026-08-18', month: 'Avgust 2026', paymentType: 'Click + Naqd', note: "To'liq yopildi", is3MonthPayment: false, bittaToliqSumma: 0, depozitBalansi: 0 },
-      { id: 'PAY-1009', studentId: 'STU-7724', studentName: 'Otabek Mirzayev', phoneStudent: '+998 90 777 88 99', phoneParent: '+998 90 444 33 22', oylikTolov: 750000, naqd: 0, click: 0, group: 'Python Backend (P1)', paymentDate: '2026-08-05', month: 'Avgust 2026', paymentType: 'Kutilmoqda', note: '25-avgust kutilmoqda', is3MonthPayment: false, bittaToliqSumma: 0, depozitBalansi: 0 },
-      { id: 'PAY-1010', studentId: 'STU-2851', studentName: 'Malika Saidova', phoneStudent: '+998 93 456 78 90', phoneParent: '+998 93 111 22 33', oylikTolov: 800000, naqd: 800000, click: 0, group: 'IELTS Standard (B2)', paymentDate: '2026-09-02', month: 'Sentyabr 2026', paymentType: 'Naqd', note: "Sentyabr to'lovi", is3MonthPayment: false, bittaToliqSumma: 0, depozitBalansi: 0 },
-      { id: 'PAY-1011', studentId: 'STU-8815', studentName: 'Jasur Umarov', phoneStudent: '+998 95 123 99 88', phoneParent: '+998 95 444 55 66', oylikTolov: 900000, naqd: 0, click: 2700000, group: 'Graphic Design (D3)', paymentDate: '2026-09-01', month: 'Sentyabr 2026', paymentType: 'Click', note: "3 oylik to'liq to'lov (Sentyabr, Oktabr, Noyabr)", is3MonthPayment: true, bittaToliqSumma: 2700000, depozitBalansi: 1800000 },
-      { id: 'PAY-1012', studentId: 'STU-8815', studentName: 'Jasur Umarov', phoneStudent: '+998 95 123 99 88', phoneParent: '+998 95 444 55 66', oylikTolov: 900000, naqd: 0, click: 900000, group: 'Graphic Design (D3)', paymentDate: '2026-09-01', month: 'Oktabr 2026', paymentType: "Oldindan to'langan (3 oylik)", note: "Sentyabr depozitidan 900k ayirildi. Qolgan depozit: 900 000 so'm", isPrepaid: true, bittaToliqSumma: 2700000, depozitBalansi: 900000 }
-    ];
+    const DEFAULT_PAYMENTS = [];
 
-    const DEFAULT_EXPENSES = [
-      { id: 'EXP-5001', category: 'Oqituvchilar oyligi', description: 'Elnur Turdiyev - Senior Frontend Teacher (Oylik + KPI)', amount: 6000000, recipient: 'Elnur Turdiyev', date: '2026-08-05', month: 'Avgust 2026', type: 'Kadrlar' },
-      { id: 'EXP-5002', category: 'Oqituvchilar oyligi', description: 'Temurbek & Boshqa oqituvchilar gonorari', amount: 4500000, recipient: 'Temurbek', date: '2026-08-06', month: 'Avgust 2026', type: 'Kadrlar' },
-      { id: 'EXP-5003', category: 'Reklama va Target', description: 'Instagram/Facebook Target reklama xarajati', amount: 2500000, recipient: 'Meta Ads Manager', date: '2026-08-08', month: 'Avgust 2026', type: 'Marketing' },
-      { id: 'EXP-5004', category: 'Markaz xarajatlari', description: 'Ichimlik suvi (18.9L bakalashkalar)', amount: 150000, recipient: 'Hydrolife Water Ltd', date: '2026-08-10', month: 'Avgust 2026', type: 'Xojalik' },
-      { id: 'EXP-5005', category: 'Markaz xarajatlari', description: "Konselariya va qog'ozlar (A4, markerlar)", amount: 350000, recipient: 'Kantselyariya Dunyosi', date: '2026-08-12', month: 'Avgust 2026', type: 'Xojalik' },
-      { id: 'EXP-5006', category: 'Markaz xarajatlari', description: 'Gullar va interyer bezaklari', amount: 120000, recipient: 'Flora Flowers Studio', date: '2026-08-14', month: 'Avgust 2026', type: 'Interyer' },
-      { id: 'EXP-5007', category: 'Kommunal va Ijara', description: 'Bino ijarasi va elektr/optik internet', amount: 5000000, recipient: 'Bino Egasi (Ijara)', date: '2026-08-01', month: 'Avgust 2026', type: 'Fixed' },
-      { id: 'EXP-5008', category: 'Founder harajatlari', description: "Ta'sischi dividend va strategik rivojlantirish harajatlari", amount: 4000000, recipient: 'Laziz aka (Founder)', date: '2026-08-20', month: 'Avgust 2026', type: 'Boshqa' }
-    ];
+    const DEFAULT_EXPENSES = [];
 
     // Excel Exporter
     const exportExcelFn = async (payments, expenses, currentMonth) => {
@@ -1226,13 +1178,13 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
       // Groups State
       const [groups, setGroups] = useState(() => {
-        const saved = localStorage.getItem('edufinance_groups_v1');
+        const saved = localStorage.getItem('edufinance_groups_v2');
         return saved ? JSON.parse(saved) : DEFAULT_GROUPS;
       });
 
       // Students State (Each student added once, has random ID) - Sanalar formatIsoDateSafe orqali qat'iy tozalanadi
       const [students, setStudents] = useState(() => {
-        const saved = localStorage.getItem('edufinance_students_v1');
+        const saved = localStorage.getItem('edufinance_students_v2');
         const list = saved ? JSON.parse(saved) : DEFAULT_STUDENTS;
         return list.map(s => ({
           ...s,
@@ -1242,7 +1194,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
       // Payments State
       const [payments, setPayments] = useState(() => {
-        const saved = localStorage.getItem('edufinance_p_v6') || localStorage.getItem('edufinance_p_v5');
+        const saved = localStorage.getItem('edufinance_p_v8') || localStorage.getItem('edufinance_p_v8');
         const list = saved ? JSON.parse(saved) : DEFAULT_PAYMENTS;
         return list.map(p => ({
           ...p,
@@ -1253,7 +1205,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
       // Expenses State
       const [expenses, setExpenses] = useState(() => {
-        const saved = localStorage.getItem('edufinance_e_v6') || localStorage.getItem('edufinance_e_v5');
+        const saved = localStorage.getItem('edufinance_e_v8') || localStorage.getItem('edufinance_e_v8');
         const list = saved ? JSON.parse(saved) : DEFAULT_EXPENSES;
         return list.map(e => ({
           ...e,
@@ -1263,7 +1215,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
       // Staff State (Ustozlar & Boshqa xodimlar)
       const [staff, setStaff] = useState(() => {
-        const saved = localStorage.getItem('edufinance_staff_v1');
+        const saved = localStorage.getItem('edufinance_staff_v2');
         const list = saved ? JSON.parse(saved) : DEFAULT_STAFF;
         return list.map(st => ({
           ...st,
@@ -1286,7 +1238,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
       // Dynamic Months: Automatic generation on start & on month end
       const [months, setMonths] = useState(() => {
-        const saved = localStorage.getItem('edufinance_m_v6');
+        const saved = localStorage.getItem('edufinance_m_v8');
         let list = saved ? JSON.parse(saved) : DEFAULT_MONTHS;
         
         // 1. Ensure current month exists
@@ -1377,27 +1329,27 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
       // Persistence
       useEffect(() => {
-        localStorage.setItem('edufinance_p_v6', JSON.stringify(payments));
+        localStorage.setItem('edufinance_p_v8', JSON.stringify(payments));
       }, [payments]);
 
       useEffect(() => {
-        localStorage.setItem('edufinance_e_v6', JSON.stringify(expenses));
+        localStorage.setItem('edufinance_e_v8', JSON.stringify(expenses));
       }, [expenses]);
 
       useEffect(() => {
-        localStorage.setItem('edufinance_m_v6', JSON.stringify(months));
+        localStorage.setItem('edufinance_m_v8', JSON.stringify(months));
       }, [months]);
 
       useEffect(() => {
-        localStorage.setItem('edufinance_students_v1', JSON.stringify(students));
+        localStorage.setItem('edufinance_students_v2', JSON.stringify(students));
       }, [students]);
 
       useEffect(() => {
-        localStorage.setItem('edufinance_groups_v1', JSON.stringify(groups));
+        localStorage.setItem('edufinance_groups_v2', JSON.stringify(groups));
       }, [groups]);
 
       useEffect(() => {
-        localStorage.setItem('edufinance_staff_v1', JSON.stringify(staff));
+        localStorage.setItem('edufinance_staff_v2', JSON.stringify(staff));
       }, [staff]);
 
       useEffect(() => {
@@ -5489,7 +5441,16 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <button
+                        onClick={handleWipeAllData}
+                        className="px-3.5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-white border border-rose-500/30 font-bold text-xs shadow transition-all flex items-center gap-1.5 cursor-pointer"
+                        title="Barcha ma'lumotlarni 0 ga tushirish va tozalash"
+                      >
+                        <Icon name="delete_forever" className="text-sm mr-1 text-rose-400" />
+                        <span>Bazani 0 ga Tushirish</span>
+                      </button>
+
                       <button
                         onClick={() => {
                           setUserForm({
