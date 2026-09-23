@@ -2061,20 +2061,26 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             let cHeaderIdx = -1;
             let colCSana = 1;
             let colCKat = 2;
-            let colCKimga = 3;
-            let colCIzoh = 4;
-            let colCSumma = 5;
-            let colCTur = 6;
+            let colCKimga = -1;
+            let colCIzoh = 3;
+            let colCSumma = -1;
+            let colCOldingi = -1;
+            let colCShu = -1;
+            let colCKeyingi = -1;
+            let colCTur = -1;
 
             for (let r = 0; r < Math.min(cRows.length, 6); r++) {
               const row = (cRows[r] || []).map(c => String(c || '').toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim());
-              if (row.some(c => c.includes('kategoriya') || c.includes('kimga') || c.includes('qayerga') || c.includes('summa') || c.includes('xarajat'))) {
+              if (row.some(c => c.includes('kategoriya') || c.includes('kimga') || c.includes('qayerga') || c.includes('summa') || c.includes('xarajat') || c.includes('oldingi') || c.includes('shu oy'))) {
                 cHeaderIdx = r;
                 row.forEach((cell, idx) => {
                   if (cell.includes('sana')) colCSana = idx;
                   else if (cell.includes('kategoriya')) colCKat = idx;
                   else if (cell.includes('kimga') || cell.includes('qayerga')) colCKimga = idx;
                   else if (cell.includes('izoh') || cell.includes('tavsif') || cell.includes('nima') || cell.includes('uchun')) colCIzoh = idx;
+                  else if (cell.includes('oldingi')) colCOldingi = idx;
+                  else if (cell.includes('shu oy') || (cell.includes('shu') && cell.includes('uchun')) || cell.includes('joriy')) colCShu = idx;
+                  else if (cell.includes('keyingi')) colCKeyingi = idx;
                   else if (cell.includes('summa') || cell.includes('narx') || cell.includes('miqdor')) colCSumma = idx;
                   else if (cell.includes('turi') || cell.includes('tur')) colCTur = idx;
                 });
@@ -2086,20 +2092,42 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             for (let i = cStart; i < cRows.length; i++) {
               const r = cRows[i];
               if (!r || r.length === 0) continue;
-              const sumVal = parseUzbekMoney(r[colCSumma]);
+
+              const valOldingi = colCOldingi >= 0 ? parseUzbekMoney(r[colCOldingi]) : 0;
+              const valShu = colCShu >= 0 ? parseUzbekMoney(r[colCShu]) : 0;
+              const valKeyingi = colCKeyingi >= 0 ? parseUzbekMoney(r[colCKeyingi]) : 0;
+              let sumVal = 0;
+              if (valOldingi > 0 || valShu > 0 || valKeyingi > 0) {
+                sumVal = valOldingi + valShu + valKeyingi;
+              } else if (colCSumma >= 0) {
+                sumVal = parseUzbekMoney(r[colCSumma]);
+              } else {
+                sumVal = parseUzbekMoney(r[4] || r[5] || r[6] || r[3]);
+              }
+
               if (sumVal <= 0) continue;
 
-              const rawKimga = String(r[colCKimga] || '').trim();
+              const rawKimga = colCKimga >= 0 ? String(r[colCKimga] || '').trim() : '';
               if (rawKimga.toLowerCase().startsWith('jami') || rawKimga.toLowerCase().startsWith('total')) continue;
-              const rawKat = String(r[colCKat] || '').trim();
-              const rawIzoh = String(r[colCIzoh] || '').trim();
-              const rawSana = r[colCSana];
+              const rawKat = colCKat >= 0 ? String(r[colCKat] || '').trim() : '';
+              if (rawKat.toLowerCase().startsWith('jami') || rawKat.toLowerCase().startsWith('total')) continue;
+              const rawIzoh = colCIzoh >= 0 ? String(r[colCIzoh] || '').trim() : '';
+              const rawSana = colCSana >= 0 ? r[colCSana] : null;
               const dateVal = parseExcelDateInBrowser(rawSana) || getTodayInputFormat();
-              const turStr = String(r[colCTur] || 'Naqd').toLowerCase();
+              const turStr = colCTur >= 0 ? String(r[colCTur] || 'Naqd').toLowerCase() : 'naqd';
               const isClick = turStr.includes('click') || turStr.includes('karta');
 
               const kimgaText = rawKimga || rawKat || 'Markaz xarajati';
-              const descText = rawIzoh ? `${kimgaText} - ${rawIzoh}` : kimgaText;
+              
+              let breakdownParts = [];
+              if (valOldingi > 0) breakdownParts.push(`Oldingi oy uchun: ${formatMoney(valOldingi)}`);
+              if (valShu > 0 && (valOldingi > 0 || valKeyingi > 0)) breakdownParts.push(`Shu oy uchun: ${formatMoney(valShu)}`);
+              if (valKeyingi > 0) breakdownParts.push(`Keyingi oy uchun: ${formatMoney(valKeyingi)}`);
+
+              let descText = rawIzoh ? `${kimgaText} - ${rawIzoh}` : kimgaText;
+              if (breakdownParts.length > 0) {
+                descText += ` (${breakdownParts.join(', ')})`;
+              }
 
               updatedExpenses.push({
                 id: makeExpId(),
