@@ -2742,6 +2742,28 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         }
       };
 
+      const handleWipeAllData = () => {
+        if (!isSuperAdmin) {
+          alert("Faqat Super Admin barcha ma'lumotlarni tozalashi mumkin!");
+          return;
+        }
+        const confirmWipe = window.confirm("DIQQAT: Barcha to'lovlar, xarajatlar, o'quvchilar va guruhlar ma'lumotlari 0 ga tushiriladi (tozalanadi)!\n\nDavom ettirishni tasdiqlaysizmi?");
+        if (confirmWipe) {
+          setPayments([]);
+          setExpenses([]);
+          setStudents([]);
+          setGroups([]);
+          setStaff([]);
+          localStorage.removeItem('edufinance_payments_v2');
+          localStorage.removeItem('edufinance_expenses_v2');
+          localStorage.removeItem('edufinance_students_v2');
+          localStorage.removeItem('edufinance_groups_v2');
+          localStorage.removeItem('edufinance_staff_v2');
+          logAdminAction('SYSTEM_WIPE', 'Tizim', "Barcha to'lovlar, xarajatlar, o'quvchilar va guruhlar 0 ga tushirildi (baza tozalandi)");
+          showToast("Barcha ma'lumotlar 0 ga tushirildi va tozalandi!");
+        }
+      };
+
       const handlePullFromSupabase = async (opts = {}) => {
         const isSilent = opts && opts.silent;
         if (!supabase) {
@@ -7407,7 +7429,59 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    class ErrorBoundary extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+      }
+      static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+      }
+      componentDidCatch(error, errorInfo) {
+        console.error("EduFinance React Error caught:", error, errorInfo);
+      }
+      render() {
+        if (this.state.hasError) {
+          return (
+            <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
+              <div className="max-w-lg w-full bg-slate-900 border border-rose-500/30 rounded-3xl p-8 shadow-2xl text-center space-y-4">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center text-2xl font-bold">
+                  !
+                </div>
+                <h2 className="text-xl font-black text-white">Xatolik yuz berdi</h2>
+                <p className="text-xs text-slate-400">
+                  Tizimda kutilmagan holat yuz berdi. Sahifani qayta yangilang yoki keshni tozalang.
+                </p>
+                <div className="p-3 rounded-xl bg-slate-950 border border-white/[0.08] text-[11px] font-mono text-rose-300 text-left overflow-auto max-h-36">
+                  {this.state.error ? this.state.error.toString() : 'Noma\'lum xatolik'}
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 cursor-pointer"
+                  >
+                    Sahifani Yangilash
+                  </button>
+                  <button
+                    onClick={() => { localStorage.clear(); window.location.reload(); }}
+                    className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-750 text-rose-300 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Keshni tozalash
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return this.props.children;
+      }
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    );
   </script>
 </body>
 </html>
