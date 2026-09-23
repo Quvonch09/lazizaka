@@ -2742,26 +2742,56 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         }
       };
 
-      const handleWipeAllData = () => {
+      const handleWipeAllData = async () => {
         if (!isSuperAdmin) {
           alert("Faqat Super Admin barcha ma'lumotlarni tozalashi mumkin!");
           return;
         }
-        const confirmWipe = window.confirm("DIQQAT: Barcha to'lovlar, xarajatlar, o'quvchilar va guruhlar ma'lumotlari 0 ga tushiriladi (tozalanadi)!\n\nDavom ettirishni tasdiqlaysizmi?");
-        if (confirmWipe) {
-          setPayments([]);
-          setExpenses([]);
-          setStudents([]);
-          setGroups([]);
-          setStaff([]);
-          localStorage.removeItem('edufinance_payments_v2');
-          localStorage.removeItem('edufinance_expenses_v2');
-          localStorage.removeItem('edufinance_students_v2');
-          localStorage.removeItem('edufinance_groups_v2');
-          localStorage.removeItem('edufinance_staff_v2');
-          logAdminAction('SYSTEM_WIPE', 'Tizim', "Barcha to'lovlar, xarajatlar, o'quvchilar va guruhlar 0 ga tushirildi (baza tozalandi)");
+        const confirmWipe = window.confirm(
+          "DIQQAT: Barcha to'lovlar, xarajatlar, o'quvchilar, guruhlar va xodimlar ma'lumotlari mahalliy xotiradan hamda SUPABASE bulut bazasidan BUTUNLAY O'CHIRILADI (0 ga tushiriladi)!\n\nDavom ettirishni tasdiqlaysizmi?"
+        );
+        if (!confirmWipe) return;
+
+        // 1. Local state tozalash
+        setPayments([]);
+        setExpenses([]);
+        setStudents([]);
+        setGroups([]);
+        setStaff([]);
+        setMonths([]);
+
+        // 2. LocalStorage tozalash
+        localStorage.removeItem('edufinance_payments_v2');
+        localStorage.removeItem('edufinance_expenses_v2');
+        localStorage.removeItem('edufinance_students_v2');
+        localStorage.removeItem('edufinance_groups_v2');
+        localStorage.removeItem('edufinance_staff_v2');
+        localStorage.removeItem('edufinance_months_v2');
+
+        // 3. Supabase bulut bazasini to'liq tozalash
+        if (supabase) {
+          setIsSyncing(true);
+          try {
+            await Promise.allSettled([
+              supabase.from('payments').delete().neq('id', '___NEVER___'),
+              supabase.from('expenses').delete().neq('id', '___NEVER___'),
+              supabase.from('students').delete().neq('id', '___NEVER___'),
+              supabase.from('groups').delete().neq('id', '___NEVER___'),
+              supabase.from('staff').delete().neq('id', '___NEVER___'),
+              supabase.from('months').delete().neq('name', '___NEVER___')
+            ]);
+            showToast("Barcha ma'lumotlar hamda Supabase serveri to'liq 0 ga tushirildi va tozalandi!");
+          } catch (err) {
+            console.error("Supabase tozalashda xatolik:", err);
+            showToast("Mahalliy baza tozalandi, Supabase tozalashda xatolik: " + (err.message || 'Noma\'lum xatolik'), "error");
+          } finally {
+            setIsSyncing(false);
+          }
+        } else {
           showToast("Barcha ma'lumotlar 0 ga tushirildi va tozalandi!");
         }
+
+        logAdminAction('SYSTEM_WIPE', 'Tizim', "Barcha to'lovlar, xarajatlar, o'quvchilar, guruhlar va oylar Supabase va mahalliy xotiradan to'liq 0 ga tushirildi (baza tozalandi)");
       };
 
       const handlePullFromSupabase = async (opts = {}) => {
