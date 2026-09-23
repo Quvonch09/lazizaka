@@ -200,6 +200,23 @@
       return `${UZ_MONTHS[idx]} ${year}`;
     };
 
+    const formatUzbekPhone = (raw) => {
+      if (!raw) return '+998 ';
+      const str = String(raw).trim();
+      if (str === '-' || str === '--' || str === 'yo\'q' || str === 'yuq' || str === 'none') return '+998 ';
+      const digits = str.replace(/\D/g, '');
+      if (digits.length === 9) {
+        return `+998 ${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 7)} ${digits.slice(7, 9)}`;
+      }
+      if (digits.length === 12 && digits.startsWith('998')) {
+        const d = digits.slice(3);
+        return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7, 9)}`;
+      }
+      if (str.startsWith('+998')) return str;
+      if (digits.length > 0) return `+998 ${digits}`;
+      return '+998 ';
+    };
+
     // Random Student ID Generator (e.g. STU-4921)
     const generateStudentId = () => {
       return 'STU-' + Math.floor(1000 + Math.random() * 9000);
@@ -1699,79 +1716,88 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 }
               }
             } else {
-              // --- AVGUST, IYUL, IYUN FORMATLARI ---
+              // --- UNIVERSAL FORMAT: STANDART SHABLON, AVGUST, IYUL, IYUN VA BARCHA OYLAR ---
               const hRow = pRows[headerRowIdx] || [];
               const subHRow = pRows[headerRowIdx + 1] || [];
               
               let colName = -1;
               let colParentPhone = -1;
               let colStudentPhone = -1;
-              let colOylik = -1;
-              let colNaxt = -1;
-              let colClick = -1;
-              let colQoldiq = -1;
-              let colDate1 = -1;
-              let colDate2 = -1;
+              let colGenericPhone = -1;
               let colGroup = -1;
+              let colOylik = -1;
+              let colNaqd1 = -1;
+              let colClick1 = -1;
+              let colDate1 = -1;
+              let colNaqd2 = -1;
+              let colClick2 = -1;
+              let colDate2 = -1;
+              let colQoldiq = -1;
+              let colIzoh = -1;
 
-              for (let c = 0; c < 15; c++) {
-                const hText = `${hRow[c] || ''} ${subHRow[c] || ''}`.toLowerCase();
-                if (hText.includes('i.f.o') || hText.includes('f.i.o') || hText.includes("o'quvchi") || hText.includes("o`quvchi") || hText.includes('talaba') || (hText.includes('ism') && !hText.includes("ta'sischi") && !hText.includes("tasischi"))) {
+              const totalCols = Math.max(hRow.length, subHRow.length, 16);
+
+              for (let c = 0; c < totalCols; c++) {
+                const hText = `${hRow[c] || ''} ${subHRow[c] || ''}`.toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim();
+                if (!hText) continue;
+
+                if (hText.includes('i.f.o') || hText.includes('f.i.o') || hText.includes("o'quvchi") || hText.includes('oquvchi') || hText.includes('talaba') || (hText.includes('ism') && !hText.includes("ta'sischi") && !hText.includes('tasischi') && !hText.includes('xodim') && !hText.includes('ustoz'))) {
                   if (colName === -1) colName = c;
                 }
-                else if (hText.includes('oilasiniki') || hText.includes('oila')) {
+                else if (hText.includes('oila') || hText.includes('ota-ona') || hText.includes('ota ona') || hText.includes('parent')) {
                   if (colParentPhone === -1) colParentPhone = c;
                 }
-                else if (hText.includes("o'ziniki") || hText.includes('oziniki')) {
+                else if (hText.includes("o'ziniki") || hText.includes('oziniki') || hText.includes('talaba tel') || hText.includes('student tel')) {
                   if (colStudentPhone === -1) colStudentPhone = c;
                 }
-                else if (hText.includes("oylik to'lov") || hText.includes('oylik tolov') || hText.includes("oylik to`lov")) {
-                  if (colOylik === -1) colOylik = c;
+                else if (hText.includes('telefon') || hText.includes('tel') || hText.includes('phone') || hText.includes('aloqa')) {
+                  if (colGenericPhone === -1) colGenericPhone = c;
                 }
-                else if (hText.includes('naxt') || hText.includes('naqd')) {
-                  if (colNaxt === -1) colNaxt = c;
-                }
-                else if (hText.includes('clisk') || hText.includes('click')) {
-                  if (colClick === -1) colClick = c;
-                }
-                else if (hText.includes('qoldiq')) {
-                  if (colQoldiq === -1) colQoldiq = c;
-                }
-                else if (hText.includes('1 to') || (hText.includes('sana') && colDate1 === -1)) {
-                  if (colDate1 === -1) colDate1 = c;
-                }
-                else if (hText.includes('2 to')) {
-                  if (colDate2 === -1) colDate2 = c;
-                }
-                else if (hText.includes('yo‘nalish') || hText.includes('yonalish') || hText.includes('yo`nalishi') || hText.includes('guruh') || hText.includes('gurux')) {
+                else if (hText.includes('guruh') || hText.includes('gurux') || hText.includes("yo'nalish") || hText.includes('yonalish') || hText.includes("yo`nalish") || hText.includes('kurs') || hText.includes('class')) {
                   if (colGroup === -1) colGroup = c;
                 }
+                else if (hText.includes("oylik to'lov") || hText.includes('oylik tolov') || hText.includes("oylik to`lov") || hText.includes('kontrakt') || hText.includes('narx') || hText.includes('tarif')) {
+                  if (colOylik === -1) colOylik = c;
+                }
+                else if (hText.includes('2-to') || hText.includes('2 to') || hText.includes('2-naqd') || hText.includes('2-naxt') || hText.includes('2 tolov')) {
+                  if (hText.includes('click') || hText.includes('clisk') || hText.includes('karta')) colClick2 = c;
+                  else if (hText.includes('sana') || hText.includes('date')) colDate2 = c;
+                  else colNaqd2 = c;
+                }
+                else if (hText.includes('1-to') || hText.includes('1 to') || hText.includes('1-naqd') || hText.includes('1-naxt') || hText.includes('1 tolov')) {
+                  if (hText.includes('click') || hText.includes('clisk') || hText.includes('karta')) colClick1 = c;
+                  else if (hText.includes('sana') || hText.includes('date')) colDate1 = c;
+                  else colNaqd1 = c;
+                }
+                else if (hText.includes('naqd') || hText.includes('naxt')) {
+                  if (colNaqd1 === -1) colNaqd1 = c;
+                }
+                else if (hText.includes('click') || hText.includes('clisk') || hText.includes('karta') || hText.includes('humo') || hText.includes('uzcard')) {
+                  if (colClick1 === -1) colClick1 = c;
+                }
+                else if (hText.includes('sana') || hText.includes('date')) {
+                  if (colDate1 === -1) colDate1 = c;
+                }
+                else if (hText.includes('qoldiq') || hText.includes('qarz') || hText.includes('debt') || hText.includes('balance')) {
+                  if (colQoldiq === -1) colQoldiq = c;
+                }
+                else if (hText.includes('izoh') || hText.includes('izox') || hText.includes('komment') || hText.includes('tavsif') || hText.includes('note')) {
+                  if (colIzoh === -1) colIzoh = c;
+                }
               }
 
+              // Fallback column indexing if headers were missing or minimal
               if (colName === -1) {
                 const fH = String(hRow[0] || '').toLowerCase();
-                if (fH.includes('№') || fH.includes('t/r') || fH.includes('tr') || fH.includes('no')) colName = 1;
+                if (fH.includes('№') || fH.includes('t/r') || fH.includes('tr') || fH.includes('no') || /^\d+$/.test(fH)) colName = 1;
                 else colName = 0;
               }
-
-              if (colParentPhone !== -1) {
-                if (colOylik === -1) colOylik = 3;
-                if (colNaxt === -1) colNaxt = 4;
-                if (colClick === -1) colClick = 5;
-                if (colQoldiq === -1) colQoldiq = 6;
-                if (colDate1 === -1) colDate1 = 7;
-                if (colDate2 === -1) colDate2 = 8;
-                if (colGroup === -1) colGroup = 9;
-              } else {
-                if (colOylik === -1) colOylik = 1;
-                if (colNaxt === -1) colNaxt = 2;
-                if (colClick === -1) colClick = 3;
-                if (colQoldiq === -1) colQoldiq = 4;
-                if (colGroup === -1) colGroup = 5;
-                if (colDate1 === -1) colDate1 = (sheetNames.some(s => s.toLowerCase().includes('iyul')) ? 7 : 6);
+              if (colStudentPhone === -1 && colGenericPhone !== -1) {
+                if (colParentPhone === -1) colStudentPhone = colGenericPhone;
+                else colStudentPhone = colGenericPhone;
               }
 
-              const rowDataStart = (subHRow.some(c => String(c).toLowerCase().includes('naxt') || String(c).toLowerCase().includes('clisk'))) 
+              const rowDataStart = (subHRow.some(c => String(c).toLowerCase().includes('naxt') || String(c).toLowerCase().includes('clisk') || String(c).toLowerCase().includes('click') || String(c).toLowerCase().includes('naqd'))) 
                 ? headerRowIdx + 2 
                 : headerRowIdx + 1;
 
@@ -1783,13 +1809,13 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 if (/^\d+$/.test(rawName) && row[colName + 1] && typeof row[colName + 1] === 'string' && !/^\d+$/.test(String(row[colName + 1]).trim())) {
                   rawName = String(row[colName + 1]).trim();
                 }
-                if (!rawName || rawName.toLowerCase().startsWith('jami') || rawName.toLowerCase().startsWith('total') || rawName.toLowerCase().startsWith('hisobot') || rawName.toLowerCase().startsWith('olingan') || rawName.toLowerCase().startsWith('i.f.o')) {
+                if (!rawName || rawName.toLowerCase().startsWith('jami') || rawName.toLowerCase().startsWith('total') || rawName.toLowerCase().startsWith('hisobot') || rawName.toLowerCase().startsWith('olingan') || rawName.toLowerCase().startsWith('i.f.o') || rawName.toLowerCase().startsWith('o\'quvchi')) {
                   continue;
                 }
 
                 const rowFullText = row.map(c => String(c || '')).join(' ');
                 
-                // QAT'IY TO'XTATISH: Jadval ostidagi xodimlar/bonus hisob-kitob qismini o'quvchi sifatida o'qimaslik
+                // Jadval ostidagi hisob-kitoblar / ustozlar oyligi qismini to'xtatish
                 if (rowFullText.toLowerCase().includes('olingan to`lov') || rowFullText.toLowerCase().includes("olingan to'lov") || rowFullText.toLowerCase().includes('olishi kerak') || row[2] === 0.17 || row[1] === 0.17) {
                   break;
                 }
@@ -1797,22 +1823,26 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 const norm = normalizeName(rawName);
                 const manOlmaganman = isNotReceivedText(rowFullText);
 
-                const parentPhone = (colParentPhone !== -1 && row[colParentPhone] && String(row[colParentPhone]).trim() !== '-') 
-                  ? String(row[colParentPhone]).trim() 
+                const parentPhone = (colParentPhone !== -1 && row[colParentPhone]) 
+                  ? formatUzbekPhone(row[colParentPhone]) 
                   : '+998 ';
-                const studentPhone = (colStudentPhone !== -1 && row[colStudentPhone] && String(row[colStudentPhone]).trim() !== '-') 
-                  ? String(row[colStudentPhone]).trim() 
-                  : '+998 ';
+                const studentPhone = (colStudentPhone !== -1 && row[colStudentPhone]) 
+                  ? formatUzbekPhone(row[colStudentPhone]) 
+                  : (colGenericPhone !== -1 && row[colGenericPhone] ? formatUzbekPhone(row[colGenericPhone]) : '+998 ');
 
-                const rawOylik = parseUzbekMoney(row[colOylik]);
+                const rawOylik = (colOylik !== -1) ? parseUzbekMoney(row[colOylik]) : 0;
                 let oylikTolov = rawOylik > 0 ? rawOylik : 750000;
 
-                let naqd = parseUzbekMoney(row[colNaxt]);
-                let click = parseUzbekMoney(row[colClick]);
+                let naqd = (colNaqd1 !== -1) ? parseUzbekMoney(row[colNaqd1]) : 0;
+                let click = (colClick1 !== -1) ? parseUzbekMoney(row[colClick1]) : 0;
+                let naqd2 = (colNaqd2 !== -1) ? parseUzbekMoney(row[colNaqd2]) : 0;
+                let click2 = (colClick2 !== -1) ? parseUzbekMoney(row[colClick2]) : 0;
 
                 if (manOlmaganman) {
                   naqd = 0;
                   click = 0;
+                  naqd2 = 0;
+                  click2 = 0;
                   manOlmaganmanCount++;
                 }
 
@@ -1820,28 +1850,19 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 const rawGroup = (colGroup !== -1 && row[colGroup]) ? String(row[colGroup]).trim() : '';
                 const guruh = cleanGroupName(rawGroup);
 
-                // Sana va Izohlar
+                // Sanalar va Izohlar
                 let rawDate1 = colDate1 !== -1 ? row[colDate1] : '';
                 let rawDate2 = colDate2 !== -1 ? row[colDate2] : '';
-                let izoh = '';
-
-                [rawDate1, rawDate2, row[10], row[11], row[12], row[19], row[20]].forEach(cell => {
-                  if (cell) {
-                    const strCell = String(cell).trim();
-                    if (strCell && !strCell.match(/^\d+[,./-]\d+/) && isNaN(parseUzbekMoney(strCell)) && strCell.length > 3) {
-                      if (!izoh) izoh = strCell;
-                      else if (!izoh.includes(strCell)) izoh += `, ${strCell}`;
-                    }
-                  }
-                });
+                let izoh = colIzoh !== -1 ? String(row[colIzoh] || '').trim() : '';
 
                 if (manOlmaganman) izoh = izoh ? izoh + " (Man olmaganman)" : "Man olmaganman";
-                const dateVal = parseExcelDateInBrowser(rawDate1) || parseExcelDateInBrowser(rawDate2) || getTodayInputFormat();
-                const totalPaid = naqd + click;
-                const is3Month = (totalPaid >= oylikTolov * 2) || rowFullText.toLowerCase().includes('3 oylik');
+                const dateVal = parseExcelDateInBrowser(rawDate1) || getTodayInputFormat();
+                const dateVal2 = parseExcelDateInBrowser(rawDate2) || '';
+                const totalPaidThisRow = naqd + click + naqd2 + click2;
+                const is3Month = (totalPaidThisRow >= oylikTolov * 2) || rowFullText.toLowerCase().includes('3 oylik') || izoh.toLowerCase().includes('3 oylik');
 
-                // Student deduplication (BAZADA BOR BO'LGAN TALABANI ANIQLASH)
-                let existingStudent = updatedStudents.find(s => isNameMatch(s.name, rawName) || (studentPhone && s.phone && studentPhone.length > 7 && s.phone.includes(studentPhone.replace(/\D/g, ''))));
+                // 1. TALABA DEDUKLIKATSIYASI (Student deduplication)
+                let existingStudent = updatedStudents.find(s => isNameMatch(s.name, rawName) || (studentPhone && studentPhone.length > 8 && s.phone && s.phone.includes(studentPhone.replace(/\D/g, ''))));
                 if (!existingStudent) {
                   existingStudent = {
                     id: generateStudentId(),
@@ -1857,14 +1878,14 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   newStudentsCount++;
                 } else {
                   matchedStudentsCount++;
-                  // Bor bo'lgan talaba bo'lsa yangi qo'shmasdan, faqat yetishmayotgan ma'lumotlarini to'ldiramiz
-                  if ((!existingStudent.phone || existingStudent.phone === '+998 ' || existingStudent.phone.length < 6) && studentPhone && studentPhone.length >= 7) {
+                  // Yetishmayotgan telefon yoki guruh ma'lumotlarini to'ldirish
+                  if ((!existingStudent.phone || existingStudent.phone === '+998 ' || existingStudent.phone.length < 8) && studentPhone && studentPhone.length >= 8) {
                     existingStudent.phone = studentPhone;
                   }
-                  if ((!existingStudent.parentPhone || existingStudent.parentPhone === '+998 ' || existingStudent.parentPhone.length < 6) && parentPhone && parentPhone.length >= 7) {
+                  if ((!existingStudent.parentPhone || existingStudent.parentPhone === '+998 ' || existingStudent.parentPhone.length < 8) && parentPhone && parentPhone.length >= 8) {
                     existingStudent.parentPhone = parentPhone;
                   }
-                  if (guruh !== 'Asosiy guruh' && (!existingStudent.group || existingStudent.group === 'Asosiy guruh')) {
+                  if (guruh && guruh !== 'Asosiy guruh' && (!existingStudent.group || existingStudent.group === 'Asosiy guruh')) {
                     existingStudent.group = guruh;
                   }
                   if (oylikTolov > 0 && (!existingStudent.monthlyFee || existingStudent.monthlyFee === 0)) {
@@ -1872,7 +1893,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   }
                 }
 
-                // Guruh deduplication
+                // 2. GURUH DEDUPLIKATSIYASI
                 if (guruh && guruh !== 'Asosiy guruh' && !updatedGroups.some(g => cleanGroupName(g.name).toLowerCase() === guruh.toLowerCase())) {
                   updatedGroups.push({
                     id: makeGrpId(),
@@ -1885,28 +1906,57 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   });
                 }
 
-                let paymentType = 'Kutilmoqda';
-                if (is3Month) paymentType = '3 Oylik (To\'liq)';
-                else if (naqd > 0 && click > 0) paymentType = 'Click + Naqd';
-                else if (click > 0) paymentType = 'Click';
-                else if (naqd > 0) paymentType = 'Naqd';
+                totalImportedIncome += totalPaidThisRow;
 
-                if (totalPaid < oylikTolov) {
-                  debtorsCount++;
-                }
-
-                totalImportedIncome += totalPaid;
-
-                // Payment deduplication (Aynan shu talabaning shu oydagi to'lovini tekshirish)
+                // 3. TO'LOV DEDUPLIKATSIYASI VA 1-TO'LOV / 2-TO'LOVNI BIRLASHTIRISH
+                // (Bitta student 2 yoki 3 marta to'lov qilgan bo'lsa, hammasi bitta yozuvda 1-to'lov, 2-to'lov ichiga yoziladi!)
                 let existingPay = updatedPayments.find(p => p.month === targetMonth && (p.studentId === existingStudent.id || normalizeName(p.studentName) === norm));
                 if (existingPay) {
-                  existingPay.naqd = Math.max(existingPay.naqd, naqd);
-                  existingPay.click = Math.max(existingPay.click, click);
-                  existingPay.oylikTolov = oylikTolov;
+                  // Ushbu oyda oldin to'lovi bor: 2-to'lov sifatida kiritamiz
+                  if (Number(existingPay.naqd2 || 0) === 0 && Number(existingPay.click2 || 0) === 0 && !existingPay.paymentDate2) {
+                    existingPay.naqd2 = naqd + naqd2;
+                    existingPay.click2 = click + click2;
+                    existingPay.paymentDate2 = dateVal2 || dateVal;
+                  } else {
+                    // 3-to'lov yoki undan ko'p: 2-to'lovga jamlaymiz
+                    existingPay.naqd2 = Number(existingPay.naqd2 || 0) + naqd + naqd2;
+                    existingPay.click2 = Number(existingPay.click2 || 0) + click + click2;
+                    if (dateVal && !String(existingPay.paymentDate2 || '').includes(dateVal)) {
+                      existingPay.paymentDate2 = existingPay.paymentDate2 ? `${existingPay.paymentDate2}, ${dateVal}` : dateVal;
+                    }
+                  }
+
                   if (izoh && !existingPay.note.includes(izoh)) {
-                    existingPay.note = existingPay.note ? existingPay.note + '; ' + izoh : izoh;
+                    existingPay.note = existingPay.note ? `${existingPay.note}; ${izoh}` : izoh;
+                  }
+
+                  if (existingPay.phoneStudent === '+998 ' && studentPhone !== '+998 ') existingPay.phoneStudent = studentPhone;
+                  if (existingPay.phoneParent === '+998 ' && parentPhone !== '+998 ') existingPay.phoneParent = parentPhone;
+                  if (existingPay.group === 'Asosiy guruh' && guruh !== 'Asosiy guruh') existingPay.group = guruh;
+
+                  const totalPaidAccum = Number(existingPay.naqd || 0) + Number(existingPay.click || 0) + Number(existingPay.naqd2 || 0) + Number(existingPay.click2 || 0);
+                  if (is3Month || existingPay.is3MonthPayment || totalPaidAccum >= existingPay.oylikTolov * 2) {
+                    existingPay.is3MonthPayment = true;
+                    existingPay.paymentType = "3 Oylik (To'liq)";
+                    existingPay.bittaToliqSumma = totalPaidAccum;
+                    existingPay.depozitBalansi = Math.max(0, totalPaidAccum - existingPay.oylikTolov);
+                  } else if (Number(existingPay.naqd2 || 0) > 0 || Number(existingPay.click2 || 0) > 0) {
+                    existingPay.paymentType = totalPaidAccum >= existingPay.oylikTolov ? "To'liq (2x to'lov)" : "Qisman (2x to'lov)";
                   }
                 } else {
+                  // Yangi oylik to'lov yozuvi
+                  let paymentType = 'Kutilmoqda';
+                  if (is3Month) paymentType = "3 Oylik (To'liq)";
+                  else if ((naqd2 > 0 || click2 > 0) && totalPaidThisRow >= oylikTolov) paymentType = "To'liq (2x to'lov)";
+                  else if (naqd2 > 0 || click2 > 0) paymentType = "Qisman (2x to'lov)";
+                  else if (naqd > 0 && click > 0) paymentType = 'Click + Naqd';
+                  else if (click > 0) paymentType = 'Click';
+                  else if (naqd > 0) paymentType = 'Naqd';
+
+                  if (totalPaidThisRow < oylikTolov && !is3Month) {
+                    debtorsCount++;
+                  }
+
                   updatedPayments.push({
                     id: makePayId(),
                     studentId: existingStudent.id,
@@ -1916,14 +1966,17 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     oylikTolov,
                     naqd,
                     click,
-                    group: guruh,
                     paymentDate: dateVal,
+                    naqd2,
+                    click2,
+                    paymentDate2: dateVal2,
+                    group: guruh,
                     month: targetMonth,
                     paymentType,
                     note: izoh,
                     is3MonthPayment: is3Month,
-                    bittaToliqSumma: is3Month ? totalPaid : 0,
-                    depozitBalansi: is3Month ? Math.max(0, totalPaid - oylikTolov) : 0,
+                    bittaToliqSumma: is3Month ? totalPaidThisRow : 0,
+                    depozitBalansi: is3Month ? Math.max(0, totalPaidThisRow - oylikTolov) : 0,
                     isPrepaid: false
                   });
                   newPaymentsCount++;
