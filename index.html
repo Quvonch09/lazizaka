@@ -1495,6 +1495,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           let newPaymentsCount = 0;
           let newStudentsCount = 0;
           let matchedStudentsCount = 0;
+          let droppedStudentsCount = 0;
           let newExpensesCount = 0;
           let newStaffCount = 0;
           let totalImportedIncome = 0;
@@ -1755,7 +1756,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 : headerRowIdx + 1;
 
               let isDroppedMode = false;
-              let droppedStudentsCount = 0;
+              droppedStudentsCount = 0;
 
               for (let i = rowDataStart; i < pRows.length; i++) {
                 const row = pRows[i];
