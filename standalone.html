@@ -4252,60 +4252,95 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       }, [groups, allMonthPayments, students, monthStudentIds, selectedMonth]);
 
       // ==========================================
-      // PAYROLL & STAFF CALCULATIONS
-      // ==========================================
+      // PAYROLL & STAFF CALCULATIONS (Ustozlar va Xodimlar Oylik Tizimi)
+      // =====================================================================
       const activePayrollMonth = selectedMonth !== 'all' ? selectedMonth : currentCalMonth;
 
       const staffPayrollSummary = useMemo(() => {
         const monthPayments = payments.filter(p => p.month === activePayrollMonth);
+        const monthExpenses = expenses.filter(e => e.month === activePayrollMonth && (e.type === 'Kadrlar' || String(e.category || '').toLowerCase().includes('oylik')));
 
-        return staff.map(member => {
-          if (member.role === 'teacher') {
-            // Teacher: assigned groups
-            const teacherGroups = groups.filter(g => g.teacher && g.teacher.trim().toLowerCase() === member.name.trim().toLowerCase());
-            const groupNames = teacherGroups.map(g => g.name);
+        // 1. Combine base staff with any employees appearing in expenses
+        const combinedStaffMap = new Map();
 
-            // Revenue from teacher's groups
-            const groupRevenue = monthPayments
-              .filter(p => groupNames.includes(p.group))
-              .reduce((acc, p) => acc + getTotalPaid(p), 0);
+        staff.forEach(st => {
+          const norm = normalizeName(st.name);
+          combinedStaffMap.set(norm, { ...st });
+        });
 
-            // Percentage salary: groupRevenue * percent / 100
-            const calculatedSalary = Math.round(groupRevenue * (Number(member.percent || 0) / 100));
+        monthExpenses.forEach((e, eIdx) => {
+          const rawName = e.recipient || '';
+          if (!rawName || rawName.length < 3) return;
+          const norm = normalizeName(rawName);
 
-            // Checked against expenses for targetMonth
-            const paidInExpenses = expenses
-              .filter(e => e.month === activePayrollMonth && (e.recipient === member.name || (e.description && e.description.toLowerCase().includes(member.name.toLowerCase()))))
-              .reduce((acc, e) => acc + Number(e.amount || 0), 0);
+          const isTeacher = String(e.category || '').includes("O'qituvchi") || String(e.description || '').toLowerCase().includes("o`qituvchi") || String(e.description || '').toLowerCase().includes("ustoz");
 
-            return {
-              ...member,
-              teacherGroups,
-              groupsCount: teacherGroups.length,
-              groupNames,
-              groupRevenue,
-              calculatedSalary,
-              paidInExpenses,
-              balanceToPay: Math.max(0, calculatedSalary - paidInExpenses)
-            };
-          } else {
-            // Other staff: fixed static salary
-            const fixedSalary = Number(member.fixedSalary || 0);
-            const paidInExpenses = expenses
-              .filter(e => e.month === activePayrollMonth && (e.recipient === member.name || (e.description && e.description.toLowerCase().includes(member.name.toLowerCase()))))
-              .reduce((acc, e) => acc + Number(e.amount || 0), 0);
-
-            return {
-              ...member,
-              teacherGroups: [],
-              groupsCount: 0,
-              groupNames: [],
-              groupRevenue: 0,
-              calculatedSalary: fixedSalary,
-              paidInExpenses,
-              balanceToPay: Math.max(0, fixedSalary - paidInExpenses)
-            };
+          if (!combinedStaffMap.has(norm)) {
+            combinedStaffMap.set(norm, {
+              id: `STF-EXP-${eIdx + 1}`,
+              name: formatProperName(rawName),
+              phone: '+998 ',
+              role: isTeacher ? 'teacher' : 'staff',
+              position: isTeacher ? "O'qituvchi" : "Xodim",
+              percent: isTeacher ? 17 : 40,
+              fixedSalary: Number(e.amount || 0),
+              joinedDate: getTodayInputFormat(),
+              status: 'active'
+            });
           }
+        });
+
+        const fullStaffList = Array.from(combinedStaffMap.values());
+
+        return fullStaffList.map(member => {
+          const normMemberName = normalizeName(member.name || '');
+
+          // Ustoz guruhlari
+          const teacherGroups = groups.filter(g => {
+            if (!g) return false;
+            const matchTeacher = g.teacher && normalizeName(g.teacher) === normMemberName;
+            const matchSubj = member.name && g.name && g.name.toLowerCase().includes(member.name.toLowerCase().split(' ')[0]);
+            return matchTeacher || matchSubj;
+          });
+          const groupNames = teacherGroups.map(g => g.name);
+
+          // Guruhlardan tushgan tushum
+          const groupRevenue = monthPayments
+            .filter(p => p.group && groupNames.includes(p.group))
+            .reduce((acc, p) => acc + (Number(p.naqd || 0) + Number(p.click || 0) + Number(p.naqd2 || 0) + Number(p.click2 || 0) || Number(p.oylikTolov || 0)), 0);
+
+          // Chiqimlarda to'langan summalar (Avans + Oylik)
+          const paidInExpenses = monthExpenses
+            .filter(e => {
+              const recNorm = normalizeName(e.recipient || '');
+              const descNorm = normalizeName(e.description || '');
+              return recNorm === normMemberName || (recNorm && normMemberName.includes(recNorm)) || (descNorm && descNorm.includes(normMemberName));
+            })
+            .reduce((acc, e) => acc + Number(e.amount || 0), 0);
+
+          const fixedSalary = Number(member.fixedSalary || member.fixed_salary || 0);
+          const percentVal = Number(member.percent || 0);
+
+          let calculatedSalary = 0;
+          if (member.role === 'teacher') {
+            const percentSalary = groupRevenue > 0 ? Math.round(groupRevenue * (percentVal / 100)) : 0;
+            // Agar guruh tushumi bo'lsa - foiz bo'yicha, aks holda - belgilangan stavka yoki to'langan oylik/avans
+            calculatedSalary = percentSalary > 0 ? percentSalary : (fixedSalary > 0 ? fixedSalary : paidInExpenses);
+          } else {
+            // Qat'iy oylikli xodimlar
+            calculatedSalary = fixedSalary > 0 ? fixedSalary : paidInExpenses;
+          }
+
+          return {
+            ...member,
+            teacherGroups,
+            groupsCount: teacherGroups.length,
+            groupNames,
+            groupRevenue,
+            calculatedSalary,
+            paidInExpenses,
+            balanceToPay: Math.max(0, calculatedSalary - paidInExpenses)
+          };
         });
       }, [staff, groups, payments, expenses, activePayrollMonth]);
 
