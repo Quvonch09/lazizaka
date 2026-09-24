@@ -442,7 +442,7 @@
     const parseUzbekMoney = (val) => {
       if (val === null || val === undefined || val === '') return 0;
       if (typeof val === 'number') {
-        if (val > 0 && val < 1000) return val * 1000;
+        if (Math.abs(val) > 0 && Math.abs(val) < 100000) return val * 1000;
         return val;
       }
       let str = String(val).trim();
@@ -457,6 +457,7 @@
       if (str.includes(',') && str.includes('.')) {
         const clean = str.replace(/,/g, '').replace(/\./g, '');
         let num = parseFloat(clean) || 0;
+        if (Math.abs(num) > 0 && Math.abs(num) < 100000) num *= 1000;
         return isNegative ? -num : num;
       }
 
@@ -464,6 +465,7 @@
         const parts = str.split('.');
         if (parts.length === 2 && parts[1].length === 3) {
           let num = parseInt(parts[0] + parts[1], 10);
+          if (Math.abs(num) > 0 && Math.abs(num) < 100000) num *= 1000;
           return isNegative ? -num : num;
         }
       }
@@ -472,13 +474,14 @@
         const parts = str.split(',');
         if (parts.length === 2 && parts[1].length === 3) {
           let num = parseInt(parts[0] + parts[1], 10);
+          if (Math.abs(num) > 0 && Math.abs(num) < 100000) num *= 1000;
           return isNegative ? -num : num;
         }
       }
 
       const clean = str.replace(/[^0-9.-]/g, '');
       let num = parseFloat(clean) || 0;
-      if (num > 0 && num < 1000) num *= 1000;
+      if (Math.abs(num) > 0 && Math.abs(num) < 100000) num *= 1000;
       return isNegative ? -num : num;
     };
 
@@ -2077,9 +2080,9 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 oshxona = kitchenTotals[normStaff];
               }
               let jami = parseUzbekMoney(r[offset + 7]);
-              if (jami === 0 && (stavka > 0 || avans > 0)) {
-                jami = Math.max(0, stavka + qarz - avans - oshxona);
-              }
+
+              const isTeacher = roleStr.toLowerCase().includes('o`qituvchi') || roleStr.toLowerCase().includes('ustoz') || roleStr.toLowerCase().includes('teacher') || roleStr.toLowerCase().includes('frontent') || roleStr.toLowerCase().includes('bekent') || roleStr.toLowerCase().includes('python') || roleStr.toLowerCase().includes('java') || roleStr.toLowerCase().includes('ai');
+
               const sanaRaw = r[offset + 8];
               const dateVal = parseExcelDateInBrowser(sanaRaw) || getTodayInputFormat();
               const izoh = String(r[offset + 9] || '').trim();
@@ -2091,10 +2094,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   id: makeStfId(),
                   name: formatProperName(rawName),
                   phone: '+998 ',
-                  role: roleStr.toLowerCase().includes('direktor') || roleStr.toLowerCase().includes('admin') || roleStr.toLowerCase().includes('farrosh') || roleStr.toLowerCase().includes('xodim') || roleStr.toLowerCase().includes('sotuvchi') || roleStr.toLowerCase().includes('moliyachi') || roleStr.toLowerCase().includes('smm') || roleStr.toLowerCase().includes('videograf') ? 'staff' : 'teacher',
+                  role: isTeacher ? 'teacher' : 'staff',
                   position: roleStr,
-                  percent: foizVal > 0 ? foizVal : (roleStr.toLowerCase().includes('o`qituvchi') || roleStr.toLowerCase().includes('ustoz') ? 17 : 40),
-                  fixedSalary: stavka > 0 ? stavka : 0,
+                  percent: foizVal > 0 ? foizVal : (isTeacher ? 17 : 40),
+                  fixedSalary: stavka > 0 ? stavka : (avans > 0 ? avans : 0),
                   joinedDate: getTodayInputFormat(),
                   status: 'active'
                 };
@@ -2104,29 +2107,64 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 if (stavka > 0) staffObj.fixedSalary = stavka;
                 if (roleStr) staffObj.position = roleStr;
                 if (foizVal > 0) staffObj.percent = foizVal;
+                if (isTeacher) staffObj.role = 'teacher';
               }
 
-              const payAmount = (jami !== 0) ? Math.abs(jami) : (avans > 0 ? avans : (stavka > 0 ? stavka : (oshxona > 0 ? oshxona : 0)));
-              if (payAmount > 0) {
-                let desc = `Xodim maoshi: ${staffObj.name}`;
-                const details = [];
-                if (avans > 0) details.push(`Avans: -${formatMoney(avans)}`);
-                if (oshxona > 0) details.push(`Oshxona: -${formatMoney(oshxona)}`);
-                if (qarz !== 0) details.push(`Qarz: ${formatMoney(qarz)}`);
-                if (details.length > 0) desc += ` (${details.join(', ')})`;
+              const categoryName = isTeacher ? "O'qituvchilar oyligi" : "Xodimlar oyligi";
+
+              // 1. Agar xodimga oy davomida Avans berilgan bo'lsa:
+              if (avans > 0) {
+                let desc = `Xodim avansi: ${staffObj.name} (${roleStr})`;
+                if (oshxona > 0) desc += ` [Oshxona: -${formatMoney(oshxona)}]`;
                 if (izoh) desc += ` [${izoh}]`;
 
                 updatedExpenses.push({
                   id: makeExpId(),
-                  category: staffObj.role === 'staff' ? 'Xodimlar oyligi' : "O'qituvchilar oyligi",
+                  category: categoryName,
                   description: desc,
-                  amount: payAmount,
+                  amount: avans,
                   recipient: staffObj.name,
                   date: dateVal,
                   month: targetMonth,
                   type: 'Kadrlar'
                 });
-                totalImportedExpense += payAmount;
+                totalImportedExpense += avans;
+                newExpensesCount++;
+              }
+
+              // 2. Agar oy oxirida qo'lga to'langan summa (jami) musbat bo'lsa:
+              if (jami > 0) {
+                let desc = `Xodim oylik to'lovi: ${staffObj.name} (${roleStr})`;
+                if (qarz !== 0) desc += ` [Qarz hisobi: ${formatMoney(qarz)}]`;
+                if (izoh) desc += ` [${izoh}]`;
+
+                updatedExpenses.push({
+                  id: makeExpId(),
+                  category: categoryName,
+                  description: desc,
+                  amount: jami,
+                  recipient: staffObj.name,
+                  date: dateVal,
+                  month: targetMonth,
+                  type: 'Kadrlar'
+                });
+                totalImportedExpense += jami;
+                newExpensesCount++;
+              }
+
+              // 3. Agar avans ham, jami ham bo'lmasa, lekin stavka ko'rsatilgan bo'lsa:
+              if (avans === 0 && jami <= 0 && stavka > 0) {
+                updatedExpenses.push({
+                  id: makeExpId(),
+                  category: categoryName,
+                  description: `Xodim maoshi: ${staffObj.name} (${roleStr})`,
+                  amount: stavka,
+                  recipient: staffObj.name,
+                  date: dateVal,
+                  month: targetMonth,
+                  type: 'Kadrlar'
+                });
+                totalImportedExpense += stavka;
                 newExpensesCount++;
               }
             }
