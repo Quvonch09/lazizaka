@@ -1288,6 +1288,9 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
       const [isSofFoydaModalOpen, setIsSofFoydaModalOpen] = useState(false);
       const [isKassoviyRazrivModalOpen, setIsKassoviyRazrivModalOpen] = useState(false);
+      const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
+      const [isExpenseBreakdownModalOpen, setIsExpenseBreakdownModalOpen] = useState(false);
+      const [selectedStaffForDetail, setSelectedStaffForDetail] = useState(null);
       const [studentForm, setStudentForm] = useState({
         id: '', name: '', phone: '+998 ', parentPhone: '+998 ',
         group: 'Frontend ReactJS (A1)', monthlyFee: 750000, status: 'active',
@@ -3980,28 +3983,44 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       }, [payments, selectedMonth]);
 
       // Filtered Students in Students View (Scoped to selectedMonth + status & search)
+      // Filtered Students in Students View (Clean Month-scoping + Status filters)
       const filteredStudentsList = useMemo(() => {
         return students.filter(s => {
-          // 1. Month Scoping
-          if (selectedMonth !== 'all') {
-            const hasPaymentInMonth = monthStudentIds && (monthStudentIds.ids.has(s.id) || monthStudentIds.names.has(normalizeName(s.name)));
-            let isDroppedInMonth = false;
-            if (s.status === 'inactive' || s.status === 'dropped') {
-              const hasGroupInMonth = allMonthPayments.some(p => p.group && p.group.toLowerCase() === (s.group || '').toLowerCase());
-              if (hasGroupInMonth) isDroppedInMonth = true;
-            }
-            if (!hasPaymentInMonth && !isDroppedInMonth) return false;
-          }
-
-          // 2. Status filter
+          // 1. Status Filter Pills
           if (studentFilterStatus === 'active' && s.status !== 'active') return false;
           if (studentFilterStatus === 'inactive' && s.status !== 'inactive' && s.status !== 'dropped') return false;
           if (studentFilterStatus === 'paused' && s.status !== 'paused') return false;
           if (studentFilterGroup !== 'all' && s.group !== studentFilterGroup) return false;
+
+          // 2. Search query
           if (studentSearchTerm) {
             const q = studentSearchTerm.toLowerCase();
-            return s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q) || (s.phone && s.phone.includes(q)) || (s.group && s.group.toLowerCase().includes(q));
+            const matchName = s.name.toLowerCase().includes(q);
+            const matchId = s.id.toLowerCase().includes(q);
+            const matchPhone = (s.phone && s.phone.includes(q)) || (s.parentPhone && s.parentPhone.includes(q));
+            const matchGrp = s.group && s.group.toLowerCase().includes(q);
+            if (!matchName && !matchId && !matchPhone && !matchGrp) return false;
           }
+
+          // 3. Month Scoping
+          if (selectedMonth !== 'all') {
+            // Active paying student in this month
+            const hasPayment = monthStudentIds && (monthStudentIds.ids.has(s.id) || monthStudentIds.names.has(normalizeName(s.name)));
+            if (hasPayment) return true;
+
+            // Inactive/Dropped students recorded in system
+            if (s.status === 'inactive' || s.status === 'dropped') {
+              // Include all dropped students unless filtered out by status
+              return true;
+            }
+
+            // Students in groups that have payments in this month
+            const hasActiveGroup = allMonthPayments.some(p => p.group && p.group.toLowerCase() === (s.group || '').toLowerCase());
+            if (hasActiveGroup) return true;
+
+            return false;
+          }
+
           return true;
         });
       }, [students, studentSearchTerm, studentFilterGroup, studentFilterStatus, selectedMonth, monthStudentIds, allMonthPayments]);
@@ -4436,33 +4455,52 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             {(activeTab === 'tushum' || activeTab === 'harajat' || activeTab === 'students' || activeTab === 'groups' || activeTab === 'staff') && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {/* Jami Tushum */}
-                  <div className="p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-emerald-500/30 relative overflow-hidden shadow-xl hover:border-emerald-500/50 hover:-translate-y-0.5 transition-all group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/20 transition-all"/>
+                  {/* Jami Tushum (Clickable Breakdown) */}
+                  <div
+                    onClick={() => setIsRevenueModalOpen(true)}
+                    className="p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-emerald-500/30 relative overflow-hidden shadow-xl hover:border-emerald-400 hover:shadow-glow-emerald hover:-translate-y-0.5 transition-all group cursor-pointer active:scale-[0.98]"
+                    title="Jami Tushum hisob-kitobini ko'rish uchun bosing"
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/25 transition-all"/>
                     <div className="flex items-center justify-between">
-                      <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5"><Icon name="payments" className="text-sm" /> Jami Tushum</div>
-                      <span className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400"><Icon name="account_balance_wallet" className="text-lg" /></span>
+                      <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Icon name="payments" className="text-sm" /> Jami Tushum
+                      </div>
+                      <span className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 transition-transform group-hover:scale-110">
+                        <Icon name="info" className="text-base" />
+                      </span>
                     </div>
                     <div className="text-2xl lg:text-3xl font-black text-emerald-400 mt-2 font-mono tabular-nums">{formatMoney(totalRevenue)}</div>
-                    <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-semibold">Naqd: {formatMoney(totalCash)}</span>
-                      <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/20 font-semibold">Click: {formatMoney(totalClick)}</span>
+                    <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-semibold">Naqd: {formatMoney(totalCash)}</span>
+                        <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/20 font-semibold">Click: {formatMoney(totalClick)}</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-semibold group-hover:underline flex items-center gap-0.5">Tarkibi 🔍</span>
                     </div>
                   </div>
 
-                  {/* Jami Harajat */}
-                  <div className="p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-rose-500/30 relative overflow-hidden shadow-xl hover:border-rose-500/50 hover:-translate-y-0.5 transition-all group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-rose-500/20 transition-all"/>
+                  {/* Jami Harajat (Clickable Breakdown) */}
+                  <div
+                    onClick={() => setIsExpenseBreakdownModalOpen(true)}
+                    className="p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-rose-500/30 relative overflow-hidden shadow-xl hover:border-rose-400 hover:shadow-glow-amber hover:-translate-y-0.5 transition-all group cursor-pointer active:scale-[0.98]"
+                    title="Jami Harajat hisob-kitobini ko'rish uchun bosing"
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-rose-500/25 transition-all"/>
                     <div className="flex items-center justify-between">
-                      <div className="text-[11px] font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5"><Icon name="receipt_long" className="text-sm" /> Jami Harajat</div>
-                      <span className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400"><Icon name="receipt_long" className="text-lg" /></span>
+                      <div className="text-[11px] font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Icon name="receipt_long" className="text-sm" /> Jami Harajat
+                      </div>
+                      <span className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 transition-transform group-hover:scale-110">
+                        <Icon name="info" className="text-base" />
+                      </span>
                     </div>
                     <div className="text-2xl lg:text-3xl font-black text-rose-400 mt-2 font-mono tabular-nums">{formatMoney(totalExpenses)}</div>
-                    <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums flex items-center gap-2">
+                    <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums flex items-center justify-between">
                       <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-300 border border-rose-500/20 font-semibold">{currentMonthExpenses.length} ta harajat yozuvi</span>
+                      <span className="text-[10px] text-rose-400 font-semibold group-hover:underline flex items-center gap-0.5">Tarkibi 🔍</span>
                     </div>
                   </div>
-
                   {/* Sof Foyda (Clickable Breakdown) */}
                   <div
                     onClick={() => setIsSofFoydaModalOpen(true)}
@@ -5160,7 +5198,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                           <th className="p-3.5 min-w-[140px] whitespace-nowrap">Telefon (Oilasi)</th>
                           <th className="p-3.5 min-w-[180px] whitespace-nowrap">Guruh / Yo'nalish</th>
                           <th className="p-3.5 min-w-[130px] whitespace-nowrap text-emerald-400">Oylik To'lov</th>
-                          <th className="p-3.5 min-w-[110px] whitespace-nowrap">Qo'shilgan</th>
+                          <th className="p-3.5 min-w-[200px] whitespace-nowrap text-cyan-300">O'qigan oylari & To'lov holati</th>
                           <th className="p-3.5 min-w-[120px] whitespace-nowrap">Holati</th>
                           <th className="p-3.5 min-w-[120px] whitespace-nowrap text-center">Amallar</th>
                         </tr>
@@ -5169,66 +5207,129 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         {filteredStudentsList.length === 0 && (
                           <tr><td colSpan={9} className="p-12 text-center text-slate-500 text-xs">O'quvchilar topilmadi</td></tr>
                         )}
-                        {filteredStudentsList.map((stu) => (
-                          <tr key={stu.id} className="hover:bg-white/[0.03] transition-colors">
-                            <td className="p-3.5 pl-4 font-mono font-bold text-indigo-400 whitespace-nowrap">
-                              <span className="px-2.5 py-1 rounded-md bg-indigo-500/15 border border-indigo-500/30 text-[11px]">
-                                {stu.id}
-                              </span>
-                            </td>
-                            <td className="p-3.5 font-bold text-white whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
-                                  stu.status === 'active' 
-                                    ? 'bg-gradient-to-br from-indigo-500/20 to-teal-500/20 border-indigo-500/30 text-indigo-300'
-                                    : 'bg-rose-500/20 border-rose-500/30 text-rose-300'
-                                }`}>
-                                  {stu.name ? stu.name.charAt(0).toUpperCase() : 'S'}
+                        {filteredStudentsList.map((stu) => {
+                          const stuPays = payments.filter(p => p.studentId === stu.id || normalizeName(p.studentName) === normalizeName(stu.name));
+                          const stuMonths = Array.from(new Set(stuPays.map(p => p.month).filter(Boolean)));
+                          const currentMonthPay = stuPays.find(p => p.month === selectedMonth);
+                          const paidAmount = currentMonthPay ? getTotalPaid(currentMonthPay) : 0;
+                          const isDebt = currentMonthPay && paidAmount === 0 && Number(currentMonthPay.oylikTolov || 0) > 0;
+                          const isPartial = currentMonthPay && paidAmount > 0 && paidAmount < Number(currentMonthPay.oylikTolov || 0);
+                          const isPaid = currentMonthPay && paidAmount >= Number(currentMonthPay.oylikTolov || 0);
+
+                          return (
+                            <tr key={stu.id} className="hover:bg-white/[0.03] transition-colors border-b border-white/[0.04]">
+                              <td className="p-3.5 pl-4 font-mono font-bold text-indigo-400 whitespace-nowrap">
+                                <span className="px-2.5 py-1 rounded-md bg-indigo-500/15 border border-indigo-500/30 text-[11px]">
+                                  {stu.id}
+                                </span>
+                              </td>
+                              <td className="p-3.5 font-bold text-white whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
+                                    stu.status === 'active'
+                                      ? 'bg-gradient-to-br from-indigo-500/20 to-teal-500/20 border-indigo-500/30 text-indigo-300'
+                                      : 'bg-rose-500/20 border-rose-500/30 text-rose-300'
+                                  }`}>
+                                    {stu.name ? stu.name.charAt(0).toUpperCase() : 'S'}
+                                  </div>
+                                  <div>
+                                    <span className="text-sm">{stu.name}</span>
+                                    {stu.dropoutReason && (
+                                      <div className="text-[10px] text-rose-400/90 font-normal">Izoh: {stu.dropoutReason}</div>
+                                    )}
+                                  </div>
                                 </div>
-                                <span className="text-sm">{stu.name}</span>
-                              </div>
-                            </td>
-                            <td className="p-3.5 text-slate-300 whitespace-nowrap font-mono tabular-nums">{stu.phone || '—'}</td>
-                            <td className="p-3.5 text-slate-400 whitespace-nowrap font-mono tabular-nums">{stu.parentPhone || '—'}</td>
-                            <td className="p-3.5 text-slate-300 whitespace-nowrap font-semibold">
-                              <span className="px-2.5 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08]">
-                                {stu.group}
-                              </span>
-                            </td>
-                            <td className="p-3.5 font-bold text-emerald-400 whitespace-nowrap font-mono tabular-nums">{formatMoney(stu.monthlyFee)}</td>
-                            <td className="p-3.5 text-slate-400 whitespace-nowrap font-mono text-[11px]">{formatDate(stu.joinedDate)}</td>
-                            <td className="p-3.5 whitespace-nowrap">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                                stu.status === 'active' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
-                                stu.status === 'paused' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
-                                (stu.status === 'inactive' || stu.status === 'dropped') ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' :
-                                'bg-slate-800 text-slate-400 border-slate-700'
-                              }`}>
-                                <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                                {stu.status === 'active' ? 'Faol' : stu.status === 'paused' ? "To'xtatgan" : (stu.status === 'inactive' || stu.status === 'dropped') ? 'Chiqib ketgan' : 'Bitirgan'}
-                              </span>
-                            </td>
-                            <td className="p-3.5 whitespace-nowrap text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <button
-                                  onClick={() => {
-                                    setStudentForm({ ...stu });
-                                    setIsStudentModalOpen(true);
-                                  }}
-                                  className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
-                                  title="Tahrirlash"
-                                >
-                                  Tahrir
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteStudent(stu.id)}
-                                  className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors text-xs font-bold cursor-pointer"
-                                  title="O'chirish"
-                                ><Icon name="close" className="text-xs" /></button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td className="p-3.5 text-slate-300 whitespace-nowrap font-mono tabular-nums text-xs">{stu.phone || '—'}</td>
+                              <td className="p-3.5 text-slate-400 whitespace-nowrap font-mono tabular-nums text-xs">{stu.parentPhone || '—'}</td>
+                              <td className="p-3.5 text-slate-300 whitespace-nowrap font-semibold">
+                                <span className="px-2.5 py-0.5 rounded-md bg-white/[0.05] border border-white/[0.08] text-xs">
+                                  {stu.group || 'Guruhsiz'}
+                                </span>
+                              </td>
+                              <td className="p-3.5 font-bold text-emerald-400 whitespace-nowrap font-mono tabular-nums text-xs">{formatMoney(stu.monthlyFee)}</td>
+                              
+                              {/* O'qigan oylari va to'lov holati */}
+                              <td className="p-3.5 whitespace-nowrap">
+                                <div className="space-y-1">
+                                  {/* Enrolled Months Badges */}
+                                  <div className="flex flex-wrap gap-1 items-center">
+                                    {stuMonths.length > 0 ? (
+                                      stuMonths.map(m => (
+                                        <span
+                                          key={m}
+                                          className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold border ${
+                                            selectedMonth === m
+                                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 ring-1 ring-emerald-400/40'
+                                              : 'bg-slate-800 text-slate-400 border-white/[0.06]'
+                                          }`}
+                                        >
+                                          {m}
+                                        </span>
+                                      ))
+                                    ) : (
+                                      <span className="text-[10px] text-slate-500 italic">To'lovlar yozilmagan</span>
+                                    )}
+                                  </div>
+
+                                  {/* Current Selected Month Payment Status */}
+                                  {selectedMonth !== 'all' && (
+                                    <div className="text-[10px] font-mono font-medium">
+                                      {currentMonthPay ? (
+                                        isPaid ? (
+                                          <span className="text-emerald-400 font-bold flex items-center gap-1">
+                                            <Icon name="check" className="text-xs" /> To'langan: {formatMoney(paidAmount)}
+                                          </span>
+                                        ) : isPartial ? (
+                                          <span className="text-amber-400 font-bold flex items-center gap-1">
+                                            <Icon name="warning" className="text-xs" /> Qisman: {formatMoney(paidAmount)} (Qarz: {formatMoney(Number(currentMonthPay.oylikTolov||0) - paidAmount)})
+                                          </span>
+                                        ) : (
+                                          <span className="text-rose-400 font-bold flex items-center gap-1">
+                                            <Icon name="error" className="text-xs" /> Qarzdor: {formatMoney(currentMonthPay.oylikTolov)}
+                                          </span>
+                                        )
+                                      ) : (
+                                        <span className="text-slate-500">Shu oyda to'lov qayd etilmagan</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              <td className="p-3.5 whitespace-nowrap">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  stu.status === 'active' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                                  stu.status === 'paused' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
+                                  (stu.status === 'inactive' || stu.status === 'dropped') ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' :
+                                  'bg-slate-800 text-slate-400 border-slate-700'
+                                }`}>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                                  {stu.status === 'active' ? 'Faol' : stu.status === 'paused' ? "To'xtatgan" : (stu.status === 'inactive' || stu.status === 'dropped') ? 'Chiqib ketgan' : 'Bitirgan'}
+                                </span>
+                              </td>
+                              <td className="p-3.5 whitespace-nowrap text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      setStudentForm({ ...stu });
+                                      setIsStudentModalOpen(true);
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-200 text-xs font-semibold border border-white/[0.08] transition-all cursor-pointer"
+                                    title="Tahrirlash"
+                                  >
+                                    Tahrir
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteStudent(stu.id)}
+                                    className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors text-xs font-bold cursor-pointer"
+                                    title="O'chirish"
+                                  ><Icon name="close" className="text-xs" /></button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -7712,6 +7813,288 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   >
                     <Icon name="upload" className="text-sm mr-1.5" />
                     <span>Yuklash va Hisoblash</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== JAMI TUSHUM HISOBLASH MODALI ===== */}
+          {isRevenueModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+              <div className="w-full max-w-2xl rounded-3xl bg-slate-900 border border-emerald-500/40 p-6 sm:p-7 shadow-2xl shadow-emerald-500/20 space-y-6 max-h-[92vh] overflow-y-auto">
+                <div className="flex items-start justify-between pb-4 border-b border-white/[0.08]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                      <Icon name="payments" className="text-2xl" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black text-white">Jami Tushum Hisob-kitobi</h3>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold">
+                          {selectedMonth === 'all' ? 'Barcha oylar' : selectedMonth}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        O'quvchilardan tushgan to'lovlar, Naqd va Click taqsimoti hamda guruhlar daromadi.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsRevenueModalOpen(false)}
+                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  ><Icon name="close" className="text-base" /></button>
+                </div>
+
+                {/* Highlight Total Box */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/60 via-slate-950/80 to-slate-900 border border-emerald-500/40 shadow-inner space-y-3">
+                  <div className="text-[11px] font-extrabold uppercase tracking-widest text-emerald-300 flex items-center gap-1.5">
+                    <Icon name="calculate" className="text-sm" /> Tushum Formulasi
+                  </div>
+                  <div className="text-xs sm:text-sm text-slate-300 font-mono leading-relaxed">
+                    <strong>Jami Tushum</strong> = <span className="text-emerald-400 font-bold">Naqd ({formatMoney(totalCash)})</span> + <span className="text-blue-400 font-bold">Click / Karta ({formatMoney(totalClick)})</span>
+                  </div>
+                  <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between">
+                    <span className="text-xs text-slate-400 font-medium">Jami Kirim Summasi:</span>
+                    <span className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-emerald-400">
+                      {formatMoney(totalRevenue)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Breakdown Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-emerald-500/25 space-y-2">
+                    <div className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                      <Icon name="payments" className="text-sm" /> Naqd Pul Tushumlari
+                    </div>
+                    <div className="text-xl font-black text-white font-mono">{formatMoney(totalCash)}</div>
+                    <div className="text-[11px] text-slate-400">
+                      To'lovlar soni: <strong className="text-emerald-300">{allMonthPayments.filter(p => Number(p.naqd||0) + Number(p.naqd2||0) > 0).length} ta</strong>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-blue-500/25 space-y-2">
+                    <div className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
+                      <Icon name="credit_card" className="text-sm" /> Click / Karta Tushumlari
+                    </div>
+                    <div className="text-xl font-black text-white font-mono">{formatMoney(totalClick)}</div>
+                    <div className="text-[11px] text-slate-400">
+                      To'lovlar soni: <strong className="text-blue-300">{allMonthPayments.filter(p => Number(p.click||0) + Number(p.click2||0) > 0).length} ta</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Revenue by Groups Table */}
+                <div className="p-4 rounded-2xl bg-slate-950/70 border border-white/[0.08] space-y-2.5">
+                  <div className="text-xs font-bold text-white uppercase tracking-wider">Guruhlar bo'yicha tushum taqsimoti:</div>
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                    {filteredGroupsList.map(grp => {
+                      const grpPays = allMonthPayments.filter(p => p.group && p.group.toLowerCase() === grp.name.toLowerCase());
+                      const rev = grpPays.reduce((acc, p) => acc + getTotalPaid(p), 0);
+                      return (
+                        <div key={grp.id} className="flex justify-between items-center text-xs p-2 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                          <span className="text-slate-300 font-medium">{grp.name} ({grpPays.length} ta to'lov)</span>
+                          <span className="font-mono font-bold text-emerald-400">{formatMoney(rev)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={() => setIsRevenueModalOpen(false)}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                  >
+                    Tushunarli, Yopish
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== JAMI HARAJAT HISOBLASH MODALI ===== */}
+          {isExpenseBreakdownModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+              <div className="w-full max-w-2xl rounded-3xl bg-slate-900 border border-rose-500/40 p-6 sm:p-7 shadow-2xl shadow-rose-500/20 space-y-6 max-h-[92vh] overflow-y-auto">
+                <div className="flex items-start justify-between pb-4 border-b border-white/[0.08]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center shadow-lg shadow-rose-500/20">
+                      <Icon name="receipt_long" className="text-2xl" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black text-white">Jami Harajatlar Hisob-kitobi</h3>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono font-bold">
+                          {selectedMonth === 'all' ? 'Barcha oylar' : selectedMonth}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Kadrlar maoshi, markaz operatsion xarajatlari va ta'sischilar chiqimlari tarkibi.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsExpenseBreakdownModalOpen(false)}
+                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  ><Icon name="close" className="text-base" /></button>
+                </div>
+
+                {/* Highlight Total Box */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-rose-950/60 via-slate-950/80 to-slate-900 border border-rose-500/40 shadow-inner space-y-3">
+                  <div className="text-[11px] font-extrabold uppercase tracking-widest text-rose-300 flex items-center gap-1.5">
+                    <Icon name="calculate" className="text-sm" /> Harajatlar Formulasi
+                  </div>
+                  <div className="text-xs sm:text-sm text-slate-300 font-mono leading-relaxed">
+                    <strong>Jami Chiqim</strong> = <span className="text-amber-400 font-bold">Kadrlar ({formatMoney(staffExpensesTotal)})</span> + <span className="text-purple-400 font-bold">Markaz ({formatMoney(centerExpensesTotal)})</span> + <span className="text-orange-400 font-bold">Founder ({formatMoney(founderExpensesTotal)})</span>
+                  </div>
+                  <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between">
+                    <span className="text-xs text-slate-400 font-medium">Jami Chiqim Summasi:</span>
+                    <span className="text-2xl sm:text-3xl font-black font-mono tabular-nums text-rose-400">
+                      {formatMoney(totalExpenses)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3 Categories Breakdown */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-amber-500/30 space-y-1.5">
+                    <div className="text-xs font-bold text-amber-300 flex items-center gap-1">
+                      <Icon name="badge" className="text-xs" /> Kadrlar Oyligi
+                    </div>
+                    <div className="text-lg font-black text-white font-mono">{formatMoney(staffExpensesTotal)}</div>
+                    <div className="text-[10px] text-slate-400">Ustoz va xodimlar maoshi</div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-purple-500/30 space-y-1.5">
+                    <div className="text-xs font-bold text-purple-300 flex items-center gap-1">
+                      <Icon name="store" className="text-xs" /> Markaz Xarajati
+                    </div>
+                    <div className="text-lg font-black text-white font-mono">{formatMoney(centerExpensesTotal)}</div>
+                    <div className="text-[10px] text-slate-400">Ijara, marketing, kommunal</div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-orange-500/30 space-y-1.5">
+                    <div className="text-xs font-bold text-orange-300 flex items-center gap-1">
+                      <Icon name="shield_person" className="text-xs" /> Founder Chiqimi
+                    </div>
+                    <div className="text-lg font-black text-white font-mono">{formatMoney(founderExpensesTotal)}</div>
+                    <div className="text-[10px] text-slate-400">Muassislar xarajatlari</div>
+                  </div>
+                </div>
+
+                {/* Top Expenses List */}
+                <div className="p-4 rounded-2xl bg-slate-950/70 border border-white/[0.08] space-y-2.5">
+                  <div className="text-xs font-bold text-white uppercase tracking-wider">Eng katta xarajatlar ro'yxati:</div>
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                    {currentMonthExpenses.slice(0, 10).map((exp, idx) => (
+                      <div key={exp.id || idx} className="flex justify-between items-center text-xs p-2 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                        <div>
+                          <div className="text-white font-medium">{exp.recipient || exp.description}</div>
+                          <div className="text-[10px] text-slate-400">{exp.category} · {exp.type}</div>
+                        </div>
+                        <span className="font-mono font-bold text-rose-400">{formatMoney(exp.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={() => setIsExpenseBreakdownModalOpen(false)}
+                    className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg shadow-rose-600/30 transition-all cursor-pointer"
+                  >
+                    Tushunarli, Yopish
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== XODIM VA USTOZLAR OYLIGI BATAFSIL MODALI ===== */}
+          {selectedStaffForDetail && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+              <div className="w-full max-w-xl rounded-3xl bg-slate-900 border border-amber-500/40 p-6 sm:p-7 shadow-2xl shadow-amber-500/20 space-y-6 max-h-[92vh] overflow-y-auto">
+                <div className="flex items-start justify-between pb-4 border-b border-white/[0.08]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                      <Icon name="badge" className="text-2xl" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black text-white">{selectedStaffForDetail.name}</h3>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                          {selectedStaffForDetail.position || (selectedStaffForDetail.role === 'teacher' ? 'Ustoz' : 'Xodim')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {activePayrollMonth} oyi bo'yicha to'liq oylik maosh hisob-kitobi va tahlili.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedStaffForDetail(null)}
+                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  ><Icon name="close" className="text-base" /></button>
+                </div>
+
+                {/* Highlight Salary Box */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-950/60 via-slate-950/80 to-slate-900 border border-amber-500/40 shadow-inner space-y-3">
+                  <div className="text-[11px] font-extrabold uppercase tracking-widest text-amber-300 flex items-center gap-1.5">
+                    <Icon name="calculate" className="text-sm" /> Oylik Hisoblash Formulasi
+                  </div>
+                  {selectedStaffForDetail.role === 'teacher' ? (
+                    <div className="text-xs text-slate-300 font-mono leading-relaxed space-y-1">
+                      <div><strong>Guruhlar jami tushumi:</strong> <span className="text-cyan-300 font-bold">{formatMoney(selectedStaffForDetail.groupRevenue)}</span></div>
+                      <div><strong>Ustoz ulushi ({selectedStaffForDetail.percent}%):</strong> <span className="text-amber-400 font-bold">{formatMoney(selectedStaffForDetail.calculatedSalary)}</span></div>
+                      <div><strong>To'langan chiqimlar:</strong> <span className="text-rose-400 font-bold">−{formatMoney(selectedStaffForDetail.paidInExpenses)}</span></div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-300 font-mono leading-relaxed space-y-1">
+                      <div><strong>Belgilangan stavka maosh:</strong> <span className="text-amber-400 font-bold">{formatMoney(selectedStaffForDetail.fixedSalary)}</span></div>
+                      <div><strong>To'langan chiqimlar:</strong> <span className="text-rose-400 font-bold">−{formatMoney(selectedStaffForDetail.paidInExpenses)}</span></div>
+                    </div>
+                  )}
+                  <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between">
+                    <span className="text-xs text-slate-400 font-medium">To'lanishi kerak bo'lgan qoldiq:</span>
+                    <span className="text-2xl font-black font-mono tabular-nums text-emerald-400">
+                      {formatMoney(selectedStaffForDetail.balanceToPay)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Teacher Groups Breakdown */}
+                {selectedStaffForDetail.role === 'teacher' && selectedStaffForDetail.teacherGroups && (
+                  <div className="p-4 rounded-2xl bg-slate-950/70 border border-white/[0.08] space-y-2.5">
+                    <div className="text-xs font-bold text-white uppercase tracking-wider">Biriktirilgan Guruhlari:</div>
+                    <div className="space-y-1.5">
+                      {selectedStaffForDetail.teacherGroups.map(tg => {
+                        const tgPays = payments.filter(p => p.month === activePayrollMonth && p.group && p.group.toLowerCase() === tg.name.toLowerCase());
+                        const tgRev = tgPays.reduce((acc, p) => acc + getTotalPaid(p), 0);
+                        return (
+                          <div key={tg.id} className="flex justify-between items-center text-xs p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                            <div>
+                              <div className="text-white font-bold">{tg.name}</div>
+                              <div className="text-[10px] text-slate-400">{tgPays.length} ta to'lovchi talaba</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-cyan-300 font-mono font-bold">{formatMoney(tgRev)}</div>
+                              <div className="text-[10px] text-amber-400 font-mono">Ulush: {formatMoney(Math.round(tgRev * (Number(selectedStaffForDetail.percent||0)/100)))}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={() => setSelectedStaffForDetail(null)}
+                    className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs shadow-lg shadow-amber-600/30 transition-all cursor-pointer"
+                  >
+                    Tushunarli, Yopish
                   </button>
                 </div>
               </div>
