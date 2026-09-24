@@ -4004,7 +4004,142 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       });
       const prevTotalExpenses = prevMonthExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
       const sofFoyda = totalRevenue - totalExpenses;
-      const kassoviyRazriv = totalCash - totalExpenses;
+
+      // Yil va oylarni xronologik tartiblash yordamchisi
+      const parseMonthYear = (mStr) => {
+        if (!mStr || mStr === 'all') return { year: 0, monthIndex: -1 };
+        const parts = mStr.trim().split(' ');
+        const mName = parts[0];
+        const year = parseInt(parts[1], 10) || 2026;
+        const monthIndex = UZ_MONTHS.indexOf(mName);
+        return { year, monthIndex: monthIndex === -1 ? 0 : monthIndex };
+      };
+
+      const compareMonths = (mA, mB) => {
+        const a = parseMonthYear(mA);
+        const b = parseMonthYear(mB);
+        if (a.year !== b.year) return a.year - b.year;
+        return a.monthIndex - b.monthIndex;
+      };
+
+      // Har bir oyning boshlang'ich qoldig'i avtomatik ravishda undan oldingi oyning yakuniy kassa qoldig'idan hisoblanadi
+      const allMonthsCashFlowChain = useMemo(() => {
+        const uniqueMonths = Array.from(new Set([
+          ...months,
+          ...payments.map(p => p.month).filter(Boolean),
+          ...expenses.map(e => e.month).filter(Boolean)
+        ])).filter(m => m && m !== 'all').sort(compareMonths);
+
+        const chain = {};
+        let rollingBalance = 0; // Tizim birinchi oyi boshidagi kassa qoldig'i
+
+        uniqueMonths.forEach((m, idx) => {
+          const mPays = payments.filter(p => p.month === m);
+          const mExps = expenses.filter(e => e.month === m);
+
+          const mRevenue = mPays.reduce((acc, p) => acc + (Number(p.naqd || 0) + Number(p.click || 0) + Number(p.naqd2 || 0) + Number(p.click2 || 0) || Number(p.oylikTolov || 0)), 0);
+          const mCashRevenue = mPays.reduce((acc, p) => acc + (Number(p.naqd || 0) + Number(p.naqd2 || 0)), 0);
+          const mExpense = mExps.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+
+          const openingBal = rollingBalance;
+          const closingBal = openingBal + mRevenue - mExpense;
+          const prevMonthName = idx > 0 ? uniqueMonths[idx - 1] : null;
+
+          chain[m] = {
+            month: m,
+            prevMonthName,
+            isFirstMonth: idx === 0,
+            openingBalance: openingBal,
+            revenue: mRevenue,
+            cashRevenue: mCashRevenue,
+            expense: mExpense,
+            closingBalance: closingBal,
+            netFlow: mRevenue - mExpense
+          };
+
+          // Keyingi oy uchun boshlang'ich qoldiq = ushbu oyning yakuniy qoldig'i
+          rollingBalance = closingBal;
+        });
+
+        return { chain, sortedMonths: uniqueMonths };
+      }, [months, payments, expenses]);
+
+      // Tanlangan oy uchun avtomatik oldingi oydan olingan boshlang'ich qoldiq
+      const currentMonthChainData = allMonthsCashFlowChain.chain[selectedMonth] || null;
+      const openingCashBalance = currentMonthChainData ? currentMonthChainData.openingBalance : 0;
+      const closingCashBalance = currentMonthChainData ? currentMonthChainData.closingBalance : (totalRevenue - totalExpenses);
+      const prevMonthNameAuto = currentMonthChainData ? currentMonthChainData.prevMonthName : null;
+
+      // 1. Oylik Kassoviy Razriv formulasi (Rasmdagi formula: KR = Chiqim - (Oy boshidagi qoldiq + Tushum))
+      const totalAvailableFunds = openingCashBalance + totalRevenue;
+      const monthlyKassoviyRazrivRaw = totalExpenses - totalAvailableFunds;
+      const monthlyKassoviyRazriv = Math.max(0, monthlyKassoviyRazrivRaw);
+
+      // 2. Kunlar bo'yicha tahlil (Muhimroq formula: Kun oxiri qoldiq = Kun boshi qoldiq + Kunlik kirim - Kunlik chiqim)
+      const dailyCashFlowAnalysis = useMemo(() => {
+        const dailyMap = {};
+
+        // Kunlik kirimlar
+        allMonthPayments.forEach(p => {
+          const d = (p.payment_date || p.date || '').slice(0, 10);
+          if (!d) return;
+          dailyMap[d] = dailyMap[d] || { income: 0, cashIncome: 0, clickIncome: 0, expense: 0 };
+          const sum = Number(p.naqd || 0) + Number(p.click || 0) + Number(p.naqd2 || 0) + Number(p.click2 || 0) || Number(p.oylikTolov || 0);
+          dailyMap[d].income += sum;
+          dailyMap[d].cashIncome += Number(p.naqd || 0) + Number(p.naqd2 || 0);
+          dailyMap[d].clickIncome += Number(p.click || 0) + Number(p.click2 || 0);
+        });
+
+        // Kunlik chiqimlar
+        currentMonthExpenses.forEach(e => {
+          const d = (e.date || '').slice(0, 10);
+          if (!d) return;
+          dailyMap[d] = dailyMap[d] || { income: 0, cashIncome: 0, clickIncome: 0, expense: 0 };
+          dailyMap[d].expense += Number(e.amount || 0);
+        });
+
+        const sortedDates = Object.keys(dailyMap).sort();
+        let runningBalance = openingCashBalance;
+        let minCumulativeBalance = openingCashBalance;
+        let minBalanceDate = null;
+
+        const timeline = sortedDates.map(dateStr => {
+          const startBal = runningBalance;
+          const { income, cashIncome, clickIncome, expense } = dailyMap[dateStr];
+          runningBalance = runningBalance + income - expense;
+
+          if (runningBalance < minCumulativeBalance) {
+            minCumulativeBalance = runningBalance;
+            minBalanceDate = dateStr;
+          }
+
+          return {
+            date: dateStr,
+            startBalance: startBal,
+            income,
+            cashIncome,
+            clickIncome,
+            expense,
+            endBalance: runningBalance,
+            isDeficit: runningBalance < 0,
+            deficitAmount: runningBalance < 0 ? Math.abs(runningBalance) : 0
+          };
+        });
+
+        const maxDailyKR = minCumulativeBalance < 0 ? Math.abs(minCumulativeBalance) : 0;
+
+        return {
+          timeline,
+          minCumulativeBalance,
+          minBalanceDate,
+          maxDailyKR,
+          hasDailyDeficit: maxDailyKR > 0
+        };
+      }, [allMonthPayments, currentMonthExpenses, openingCashBalance]);
+
+      // Asosiy ko'rsatkich (Kunlik yoki oylik yetishmovchilik bo'lsa)
+      const effectiveKassoviyRazriv = dailyCashFlowAnalysis.maxDailyKR > 0 ? dailyCashFlowAnalysis.maxDailyKR : monthlyKassoviyRazriv;
+      const kassoviyRazriv = effectiveKassoviyRazriv;
 
       const expenseByCategory = currentMonthExpenses.reduce((acc, e) => {
         acc[e.category] = (acc[e.category] || 0) + Number(e.amount || 0);
