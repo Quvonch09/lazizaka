@@ -442,25 +442,44 @@
     const parseUzbekMoney = (val) => {
       if (val === null || val === undefined || val === '') return 0;
       if (typeof val === 'number') {
-        if (val > 0 && val < 10000) return val * 1000;
+        if (val > 0 && val < 1000) return val * 1000;
         return val;
       }
-      let str = String(val).trim().replace(/\s+/g, '');
-      if (str === '-' || str === '--') return 0;
+      let str = String(val).trim();
+      if (!str || str === '-' || str === '--') return 0;
+      if (str.endsWith('%')) return 0;
+      if (/^[0-9]+\.\s+[A-Za-z]/.test(str)) return 0;
+
+      str = str.replace(/[`'ʻ’ʼ\s]/g, '').replace(/so'?m/gi, '').replace(/sum/gi, '').replace(/uzs/gi, '');
       const isNegative = str.startsWith('-');
       str = str.replace(/^-+/, '');
-      
-      // If ends with .000 or ,000 e.g. 650.000 or 75,279.000
-      if (str.endsWith('.000') || str.endsWith(',000')) {
-        str = str.replace(/[.,]000$/, '000');
-        str = str.replace(/[.,]/g, '');
-      } else {
-        str = str.replace(/[.,\s]/g, '');
+
+      if (str.includes(',') && str.includes('.')) {
+        const clean = str.replace(/,/g, '').replace(/\./g, '');
+        let num = parseFloat(clean) || 0;
+        return isNegative ? -num : num;
       }
-      let num = parseFloat(str) || 0;
-      if (isNegative) num = -num;
-      if (num > 0 && num < 10000) num *= 1000;
-      return num;
+
+      if (str.includes('.') && !str.includes(',')) {
+        const parts = str.split('.');
+        if (parts.length === 2 && parts[1].length === 3) {
+          let num = parseInt(parts[0] + parts[1], 10);
+          return isNegative ? -num : num;
+        }
+      }
+
+      if (str.includes(',') && !str.includes('.')) {
+        const parts = str.split(',');
+        if (parts.length === 2 && parts[1].length === 3) {
+          let num = parseInt(parts[0] + parts[1], 10);
+          return isNegative ? -num : num;
+        }
+      }
+
+      const clean = str.replace(/[^0-9.-]/g, '');
+      let num = parseFloat(clean) || 0;
+      if (num > 0 && num < 1000) num *= 1000;
+      return isNegative ? -num : num;
     };
 
     const formatIsoDateSafe = (val, defaultYear = 2026) => {
@@ -2016,33 +2035,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           if (salarySheet) {
             const sRows = window.XLSX.utils.sheet_to_json(salarySheet, { header: 1, raw: false });
             let sHeaderIdx = -1;
-            let colStaffName = 1;
-            let colRole = 2;
-            let colStavka = 3;
-            let colFoiz = 4;
-            let colAvans = 5;
-            let colQarz = 6;
-            let colOshxona = 7;
-            let colJami = 8;
-            let colSana = 9;
-            let colIzoh = 10;
-
             for (let r = 0; r < Math.min(sRows.length, 6); r++) {
               const row = (sRows[r] || []).map(c => String(c || '').toLowerCase().replace(/[`'ʻ’ʼ]/g, "'").trim());
               if (row.some(c => c.includes('xodim') || c.includes('f.i.o') || c.includes('ustoz') || c.includes('maosh') || c.includes('stavka'))) {
                 sHeaderIdx = r;
-                row.forEach((cell, idx) => {
-                  if (cell.includes('xodim') || cell.includes('f.i.o') || cell.includes('ism') || cell.includes('ustoz')) colStaffName = idx;
-                  else if (cell.includes('lavozim') || cell.includes("yo'nalish")) colRole = idx;
-                  else if (cell.includes('stavka') || cell.includes('asosiy') || (cell.includes('oylik') && !cell.includes("qo'lga"))) colStavka = idx;
-                  else if (cell.includes('ulush') || cell.includes('foiz')) colFoiz = idx;
-                  else if (cell.includes('avans')) colAvans = idx;
-                  else if (cell.includes('qarz') || cell.includes('oldingi')) colQarz = idx;
-                  else if (cell.includes('oshxona') || cell.includes('tushlik')) colOshxona = idx;
-                  else if (cell.includes("qo'lga") || cell.includes('jami') || cell.includes('olishi') || cell.includes('tegadigan')) colJami = idx;
-                  else if (cell.includes('sana')) colSana = idx;
-                  else if (cell.includes('izoh') || cell.includes('tafsilot')) colIzoh = idx;
-                });
                 break;
               }
             }
@@ -2052,30 +2048,33 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
               const r = sRows[i];
               if (!r || r.length === 0) continue;
 
-              let rawName = String(r[colStaffName] || '').trim();
-              if ((/^\d+$/.test(rawName) || !rawName) && r[colStaffName + 1]) {
-                rawName = String(r[colStaffName + 1]).trim();
+              let offset = 0;
+              const col0 = String(r[0] || '').trim();
+              if (/^\d+$/.test(col0) || col0 === '') {
+                offset = 1;
               }
-              if (!rawName || rawName.toLowerCase().startsWith('jami') || rawName.toLowerCase().startsWith('total') || rawName.toLowerCase().startsWith('xodim') || rawName.length < 3) continue;
 
-              const roleStr = String(r[colRole] || (rawName.toLowerCase().includes('direktor') ? 'Direktor' : 'Ustoz')).trim();
-              const stavka = parseUzbekMoney(r[colStavka]);
-              const rawFoiz = String(r[colFoiz] || '');
+              let rawName = String(r[offset + 0] || '').trim();
+              if (!rawName || rawName === '-' || rawName.toLowerCase().startsWith('jami') || rawName.toLowerCase().startsWith('total') || rawName.length < 3) continue;
+
+              const roleStr = String(r[offset + 1] || (rawName.toLowerCase().includes('direktor') ? 'Direktor' : 'Ustoz')).trim();
+              const stavka = parseUzbekMoney(r[offset + 2]);
+              const rawFoiz = String(r[offset + 3] || '');
               let foizVal = rawFoiz.includes('%') ? parseFloat(rawFoiz.replace('%', '')) : (parseFloat(rawFoiz) > 0 && parseFloat(rawFoiz) < 1 ? parseFloat(rawFoiz) * 100 : parseFloat(rawFoiz) || 0);
-              const avans = parseUzbekMoney(r[colAvans]);
-              const qarz = parseUzbekMoney(r[colQarz]);
-              let oshxona = parseUzbekMoney(r[colOshxona]);
+              const avans = parseUzbekMoney(r[offset + 4]);
+              const qarz = parseUzbekMoney(r[offset + 5]);
+              let oshxona = parseUzbekMoney(r[offset + 6]);
               const normStaff = normalizeName(rawName);
               if (oshxona === 0 && kitchenTotals[normStaff]) {
                 oshxona = kitchenTotals[normStaff];
               }
-              let jami = parseUzbekMoney(r[colJami]);
+              let jami = parseUzbekMoney(r[offset + 7]);
               if (jami === 0 && (stavka > 0 || avans > 0)) {
                 jami = Math.max(0, stavka + qarz - avans - oshxona);
               }
-              const sanaRaw = r[colSana];
+              const sanaRaw = r[offset + 8];
               const dateVal = parseExcelDateInBrowser(sanaRaw) || getTodayInputFormat();
-              const izoh = String(r[colIzoh] || '').trim();
+              const izoh = String(r[offset + 9] || '').trim();
 
               // Xodimlarni bazaga yangilash / qo'shish
               let staffObj = updatedStaff.find(s => normalizeName(s.name) === normStaff);
@@ -2084,9 +2083,9 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   id: makeStfId(),
                   name: formatProperName(rawName),
                   phone: '+998 ',
-                  role: roleStr.toLowerCase().includes('direktor') || roleStr.toLowerCase().includes('admin') || roleStr.toLowerCase().includes('farrosh') || roleStr.toLowerCase().includes('xodim') ? 'staff' : 'teacher',
+                  role: roleStr.toLowerCase().includes('direktor') || roleStr.toLowerCase().includes('admin') || roleStr.toLowerCase().includes('farrosh') || roleStr.toLowerCase().includes('xodim') || roleStr.toLowerCase().includes('sotuvchi') || roleStr.toLowerCase().includes('moliyachi') || roleStr.toLowerCase().includes('smm') || roleStr.toLowerCase().includes('videograf') ? 'staff' : 'teacher',
                   position: roleStr,
-                  percent: foizVal > 0 ? foizVal : 40,
+                  percent: foizVal > 0 ? foizVal : (roleStr.toLowerCase().includes('o`qituvchi') || roleStr.toLowerCase().includes('ustoz') ? 17 : 40),
                   fixedSalary: stavka > 0 ? stavka : 0,
                   joinedDate: getTodayInputFormat(),
                   status: 'active'
@@ -2099,7 +2098,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 if (foizVal > 0) staffObj.percent = foizVal;
               }
 
-              const payAmount = jami > 0 ? jami : (avans > 0 ? avans : stavka);
+              const payAmount = (jami !== 0) ? Math.abs(jami) : (avans > 0 ? avans : (stavka > 0 ? stavka : (oshxona > 0 ? oshxona : 0)));
               if (payAmount > 0) {
                 let desc = `Xodim maoshi: ${staffObj.name}`;
                 const details = [];
@@ -2111,7 +2110,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 updatedExpenses.push({
                   id: makeExpId(),
-                  category: roleStr.toLowerCase().includes('direktor') || roleStr.toLowerCase().includes('admin') || roleStr.toLowerCase().includes('xodim') || roleStr.toLowerCase().includes('farrosh') ? 'Xodimlar oyligi' : "O'qituvchilar oyligi",
+                  category: staffObj.role === 'staff' ? 'Xodimlar oyligi' : "O'qituvchilar oyligi",
                   description: desc,
                   amount: payAmount,
                   recipient: staffObj.name,
