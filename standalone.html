@@ -4117,15 +4117,17 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       const dailyCashFlowAnalysis = useMemo(() => {
         const dailyMap = {};
 
-        // Kunlik kirimlar
+        // Kunlik kirimlar (To'lovlar sanasi - paymentDate, payment_date yoki date)
         allMonthPayments.forEach(p => {
-          const d = (p.payment_date || p.date || '').slice(0, 10);
+          const d = (p.paymentDate || p.payment_date || p.date || '2026-06-15').slice(0, 10);
           if (!d) return;
           dailyMap[d] = dailyMap[d] || { income: 0, cashIncome: 0, clickIncome: 0, expense: 0 };
-          const sum = Number(p.naqd || 0) + Number(p.click || 0) + Number(p.naqd2 || 0) + Number(p.click2 || 0) || Number(p.oylikTolov || 0);
-          dailyMap[d].income += sum;
-          dailyMap[d].cashIncome += Number(p.naqd || 0) + Number(p.naqd2 || 0);
-          dailyMap[d].clickIncome += Number(p.click || 0) + Number(p.click2 || 0);
+          const cashSum = Number(p.naqd || 0) + Number(p.naqd2 || 0);
+          const clickSum = Number(p.click || 0) + Number(p.click2 || 0);
+          const totalSum = (cashSum + clickSum > 0) ? (cashSum + clickSum) : Number(p.oylikTolov || p.oylik_tolov || 0);
+          dailyMap[d].income += totalSum;
+          dailyMap[d].cashIncome += cashSum;
+          dailyMap[d].clickIncome += clickSum;
         });
 
         // Kunlik chiqimlar
@@ -4175,9 +4177,9 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
         };
       }, [allMonthPayments, currentMonthExpenses, openingCashBalance]);
 
-      // Asosiy ko'rsatkich (Kunlik yoki oylik yetishmovchilik bo'lsa)
-      const effectiveKassoviyRazriv = dailyCashFlowAnalysis.maxDailyKR > 0 ? dailyCashFlowAnalysis.maxDailyKR : monthlyKassoviyRazriv;
-      const kassoviyRazriv = effectiveKassoviyRazriv;
+      // Asosiy ko'rsatkich: Oylik Kassoviy Razriv (KR = Chiqim - (Boshlang'ich + Tushum))
+      const effectiveKassoviyRazriv = monthlyKassoviyRazriv;
+      const kassoviyRazriv = monthlyKassoviyRazriv;
 
       const expenseByCategory = currentMonthExpenses.reduce((acc, e) => {
         acc[e.category] = (acc[e.category] || 0) + Number(e.amount || 0);
