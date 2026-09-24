@@ -1286,6 +1286,8 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
       // Student Modals
       const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+      const [isSofFoydaModalOpen, setIsSofFoydaModalOpen] = useState(false);
+      const [isKassoviyRazrivModalOpen, setIsKassoviyRazrivModalOpen] = useState(false);
       const [studentForm, setStudentForm] = useState({
         id: '', name: '', phone: '+998 ', parentPhone: '+998 ',
         group: 'Frontend ReactJS (A1)', monthlyFee: 750000, status: 'active',
@@ -2943,6 +2945,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                 depozitBalansi: Number(p.depozit_balansi || 0)
               })));
               pullSuccess = true;
+              const pMonths = Array.from(new Set(pData.map(p => p.month).filter(Boolean)));
+              if (pMonths.length > 0 && !pMonths.includes(currentCalMonth)) {
+                setSelectedMonth(pMonths[pMonths.length - 1]);
+              }
             }
           } catch(pe) { console.warn('Payments pull notice:', pe); }
 
@@ -3205,6 +3211,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   })));
                 }
                 foundCloudData = true;
+                  const pMonths = Array.from(new Set(pData.map(p => p.month).filter(Boolean)));
+                  if (pMonths.length > 0 && !pMonths.includes(currentCalMonth)) {
+                    setSelectedMonth(pMonths[pMonths.length - 1]);
+                  }
               }
             } catch(e) { console.warn('Cloud payments fetch notice:', e); }
 
@@ -3955,8 +3965,35 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
       }, {});
 
       // Filtered Students in Students View
+      // Active Student IDs & Names for selectedMonth
+      const monthStudentIds = useMemo(() => {
+        if (selectedMonth === 'all') return null;
+        const ids = new Set();
+        const names = new Set();
+        payments.forEach(p => {
+          if (p.month === selectedMonth) {
+            if (p.studentId) ids.add(p.studentId);
+            if (p.studentName) names.add(normalizeName(p.studentName));
+          }
+        });
+        return { ids, names };
+      }, [payments, selectedMonth]);
+
+      // Filtered Students in Students View (Scoped to selectedMonth + status & search)
       const filteredStudentsList = useMemo(() => {
         return students.filter(s => {
+          // 1. Month Scoping
+          if (selectedMonth !== 'all') {
+            const hasPaymentInMonth = monthStudentIds && (monthStudentIds.ids.has(s.id) || monthStudentIds.names.has(normalizeName(s.name)));
+            let isDroppedInMonth = false;
+            if (s.status === 'inactive' || s.status === 'dropped') {
+              const hasGroupInMonth = allMonthPayments.some(p => p.group && p.group.toLowerCase() === (s.group || '').toLowerCase());
+              if (hasGroupInMonth) isDroppedInMonth = true;
+            }
+            if (!hasPaymentInMonth && !isDroppedInMonth) return false;
+          }
+
+          // 2. Status filter
           if (studentFilterStatus === 'active' && s.status !== 'active') return false;
           if (studentFilterStatus === 'inactive' && s.status !== 'inactive' && s.status !== 'dropped') return false;
           if (studentFilterStatus === 'paused' && s.status !== 'paused') return false;
@@ -3967,7 +4004,16 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
           }
           return true;
         });
-      }, [students, studentSearchTerm, studentFilterGroup, studentFilterStatus]);
+      }, [students, studentSearchTerm, studentFilterGroup, studentFilterStatus, selectedMonth, monthStudentIds, allMonthPayments]);
+
+      // Filtered Groups in Groups View (Scoped to selectedMonth)
+      const filteredGroupsList = useMemo(() => {
+        if (selectedMonth === 'all') return groups;
+        return groups.filter(g => {
+          return allMonthPayments.some(p => p.group && p.group.toLowerCase() === g.name.toLowerCase()) ||
+                 students.some(s => s.group && s.group.toLowerCase() === g.name.toLowerCase() && (monthStudentIds?.ids?.has(s.id) || monthStudentIds?.names?.has(normalizeName(s.name))));
+        });
+      }, [groups, allMonthPayments, students, monthStudentIds, selectedMonth]);
 
       // ==========================================
       // PAYROLL & STAFF CALCULATIONS
@@ -4287,7 +4333,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
               {/* All months */}
               <button
-                onClick={() => { setSelectedMonth('all'); if (activeTab !== 'tushum' && activeTab !== 'harajat') setActiveTab('tushum'); }}
+                onClick={() => setSelectedMonth('all')}
                 className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2.5 shrink-0 cursor-pointer ${
                   selectedMonth === 'all'
                     ? 'bg-white text-slate-950 shadow-lg font-bold'
@@ -4312,7 +4358,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   return (
                     <div key={m} className="group relative flex items-center w-full shrink-0">
                       <button
-                        onClick={() => { setSelectedMonth(m); if (activeTab !== 'tushum' && activeTab !== 'harajat') setActiveTab('tushum'); }}
+                        onClick={() => setSelectedMonth(m)}
                         className={`w-full text-left pl-3 pr-8 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                           isActive
                             ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-md shadow-emerald-500/10'
@@ -4387,7 +4433,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             <main className="flex-1 h-full overflow-y-auto p-6 space-y-6">
 
             {/* ===== VIEW 1 & 2: TUSHUM & HARAJAT SUMMARY METRICS (Visible on Financial Tabs) ===== */}
-            {(activeTab === 'tushum' || activeTab === 'harajat') && (
+            {(activeTab === 'tushum' || activeTab === 'harajat' || activeTab === 'students' || activeTab === 'groups' || activeTab === 'staff') && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Jami Tushum */}
@@ -4417,52 +4463,72 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                     </div>
                   </div>
 
-                  {/* Sof Foyda */}
-                  <div className={`p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border relative overflow-hidden shadow-xl hover:-translate-y-0.5 transition-all group ${
-                    sofFoyda >= 0 ? 'border-emerald-500/40 hover:border-emerald-500/60' : 'border-rose-500/40 hover:border-rose-500/60'
-                  }`}>
+                  {/* Sof Foyda (Clickable Breakdown) */}
+                  <div
+                    onClick={() => setIsSofFoydaModalOpen(true)}
+                    className={`p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border relative overflow-hidden shadow-xl hover:-translate-y-0.5 transition-all group cursor-pointer active:scale-[0.98] ${
+                      sofFoyda >= 0
+                        ? 'border-emerald-500/40 hover:border-emerald-400 hover:shadow-glow-emerald ring-0 hover:ring-2 hover:ring-emerald-500/30'
+                        : 'border-rose-500/40 hover:border-rose-400 hover:shadow-glow-amber ring-0 hover:ring-2 hover:ring-rose-500/30'
+                    }`}
+                    title="Sof Foyda hisob-kitob formulasi va batafsil manbalarini ko'rish uchun bosing"
+                  >
                     <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl pointer-events-none transition-all ${
-                      sofFoyda >= 0 ? 'bg-emerald-500/10 group-hover:bg-emerald-500/20' : 'bg-rose-500/10 group-hover:bg-rose-500/20'
+                      sofFoyda >= 0 ? 'bg-emerald-500/10 group-hover:bg-emerald-500/25' : 'bg-rose-500/10 group-hover:bg-rose-500/25'
                     }`}/>
                     <div className="flex items-center justify-between">
-                      <div className={`text-[11px] font-bold uppercase tracking-wider ${
+                      <div className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
                         sofFoyda >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                      }`}>Sof Foyda</div>
-                      <span className={`w-8 h-8 rounded-xl border flex items-center justify-center ${
-                        sofFoyda >= 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                      }`}><Icon name="trending_up" className="text-lg" /></span>
+                      }`}>
+                        <Icon name="trending_up" className="text-sm" /> Sof Foyda
+                      </div>
+                      <span className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-transform group-hover:scale-110 ${
+                        sofFoyda >= 0 ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 shadow-sm shadow-emerald-500/20' : 'bg-rose-500/15 border-rose-500/30 text-rose-300 shadow-sm shadow-rose-500/20'
+                      }`}><Icon name="info" className="text-base" /></span>
                     </div>
                     <div className={`text-2xl lg:text-3xl font-black mt-2 font-mono tabular-nums ${
                       sofFoyda >= 0 ? 'text-emerald-400' : 'text-rose-400'
                     }`}>{sofFoyda >= 0 ? '+' : '-'}{formatMoney(Math.abs(sofFoyda))}</div>
-                    <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums">
-                      <span className="px-2 py-0.5 rounded-md bg-white/[0.05] text-slate-300 border border-white/[0.08]">Tushum − Harajat</span>
+                    <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded-md bg-white/[0.05] text-slate-300 border border-white/[0.08]">Tushum − Chiqim</span>
+                      <span className="text-[10px] text-emerald-400 font-semibold group-hover:underline flex items-center gap-0.5">Hisob-kitobi 🔍</span>
                     </div>
                   </div>
 
-                  {/* Kassoviy Razriv */}
-                  <div className={`p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border relative overflow-hidden shadow-xl hover:-translate-y-0.5 transition-all group ${
-                    kassoviyRazriv >= 0 ? 'border-cyan-500/40 hover:border-cyan-500/60' : 'border-orange-500/40 hover:border-orange-500/60'
-                  }`}>
+                  {/* Kassoviy Razriv (Clickable Breakdown) */}
+                  <div
+                    onClick={() => setIsKassoviyRazrivModalOpen(true)}
+                    className={`p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border relative overflow-hidden shadow-xl hover:-translate-y-0.5 transition-all group cursor-pointer active:scale-[0.98] ${
+                      kassoviyRazriv >= 0
+                        ? 'border-cyan-500/40 hover:border-cyan-400 hover:shadow-glow-indigo ring-0 hover:ring-2 hover:ring-cyan-500/30'
+                        : 'border-orange-500/40 hover:border-orange-400 hover:shadow-glow-amber ring-0 hover:ring-2 hover:ring-orange-500/30'
+                    }`}
+                    title="Kassoviy Razriv hisob-kitob formulasi va kassa naqd balansi tahlilini ko'rish uchun bosing"
+                  >
                     <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-2xl pointer-events-none transition-all ${
-                      kassoviyRazriv >= 0 ? 'bg-cyan-500/10 group-hover:bg-cyan-500/20' : 'bg-orange-500/10 group-hover:bg-orange-500/20'
+                      kassoviyRazriv >= 0 ? 'bg-cyan-500/10 group-hover:bg-cyan-500/25' : 'bg-orange-500/10 group-hover:bg-orange-500/25'
                     }`}/>
                     <div className="flex items-center justify-between">
-                      <div className={`text-[11px] font-bold uppercase tracking-wider ${
+                      <div className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
                         kassoviyRazriv >= 0 ? 'text-cyan-400' : 'text-orange-400'
-                      }`}>Kassoviy Razriv</div>
-                      <span className={`w-8 h-8 rounded-xl border flex items-center justify-center ${
-                        kassoviyRazriv >= 0 ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' : 'bg-orange-500/10 border-orange-500/20 text-orange-400'
-                      }`}><Icon name="bolt" className="text-lg" /></span>
+                      }`}>
+                        <Icon name="bolt" className="text-sm" /> Kassoviy Razriv
+                      </div>
+                      <span className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-transform group-hover:scale-110 ${
+                        kassoviyRazriv >= 0 ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300 shadow-sm shadow-cyan-500/20' : 'bg-orange-500/15 border-orange-500/30 text-orange-300 shadow-sm shadow-orange-500/20'
+                      }`}><Icon name="info" className="text-base" /></span>
                     </div>
                     <div className={`text-2xl lg:text-3xl font-black mt-2 font-mono tabular-nums ${
                       kassoviyRazriv >= 0 ? 'text-cyan-400' : 'text-orange-400'
                     }`}>{kassoviyRazriv >= 0 ? '+' : '-'}{formatMoney(Math.abs(kassoviyRazriv))}</div>
-                    <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-md bg-white/[0.05] text-slate-300 border border-white/[0.08]">Naqd − Harajat</span>
-                      {kassoviyRazriv < 0 && (
-                        <span className="px-2 py-0.5 rounded-md bg-orange-500/20 text-orange-300 border border-orange-500/40 font-bold flex items-center gap-1"><Icon name="warning" className="text-xs" /> Yetishmovchilik!</span>
-                      )}
+                    <div className="text-[11px] text-slate-400 mt-2 font-mono tabular-nums flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-white/[0.05] text-slate-300 border border-white/[0.08]">Naqd − Chiqim</span>
+                        {kassoviyRazriv < 0 && (
+                          <span className="px-2 py-0.5 rounded-md bg-orange-500/20 text-orange-300 border border-orange-500/40 font-bold flex items-center gap-1"><Icon name="warning" className="text-xs" /> Yetishmovchilik!</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-cyan-400 font-semibold group-hover:underline flex items-center gap-0.5">Hisob-kitobi 🔍</span>
                     </div>
                   </div>
                 </div>
@@ -4992,13 +5058,13 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                           O'quvchilar Bazasi (Talabalar Ro'yxati)
                         </h2>
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold font-mono tabular-nums">
-                          Jami: {students.length} ta
+                          {selectedMonth === 'all' ? 'Barcha oylar' : selectedMonth}: {filteredStudentsList.length} ta
                         </span>
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold font-mono tabular-nums">
-                          Faol: {students.filter(s => s.status === 'active').length} ta
+                          Faol: {filteredStudentsList.filter(s => s.status === 'active').length} ta
                         </span>
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold font-mono tabular-nums">
-                          Chiqib ketgan: {students.filter(s => s.status === 'inactive' || s.status === 'dropped').length} ta
+                          Chiqib ketgan: {filteredStudentsList.filter(s => s.status === 'inactive' || s.status === 'dropped').length} ta
                         </span>
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5">
@@ -5184,11 +5250,11 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                           Guruhlar va Kurslar Boshqaruvi
                         </h2>
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold font-mono tabular-nums">
-                          {groups.length} ta guruh
+                          {selectedMonth === 'all' ? 'Barcha oylar' : selectedMonth} · {filteredGroupsList.length} ta guruh
                         </span>
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Markazdagi barcha faol guruhlar, ularning oylik narxi, dars kunlari va biriktirilgan o'qituvchilari.
+                        {selectedMonth === 'all' ? "Markazdagi barcha guruhlar va ularning umumiy statistikasi." : `${selectedMonth} oyida faol bo'lgan guruhlar, ularning oylik tushumi va o'quvchilari.`}
                       </p>
                     </div>
                   </div>
@@ -5209,60 +5275,77 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                 {/* Groups Grid Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {groups.map(grp => {
-                    const studentCount = students.filter(s => s.group === grp.name).length;
-                    return (
-                      <div key={grp.id} className="p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] hover:border-purple-500/40 transition-all space-y-3.5 shadow-xl hover:-translate-y-0.5 relative group">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold">
-                              {grp.id}
-                            </span>
-                            <h3 className="font-extrabold text-white text-base mt-2">{grp.name}</h3>
-                            <span className="text-xs text-slate-400 font-medium">{grp.category}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => { setGroupForm({ ...grp }); setIsGroupModalOpen(true); }}
-                              className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 text-xs cursor-pointer border border-white/[0.08]"
-                              title="Tahrirlash"
-                            ><Icon name="edit" className="text-xs" /></button>
-                            <button
-                              onClick={() => handleDeleteGroup(grp.id)}
-                              className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 text-xs font-bold cursor-pointer border border-white/[0.08]"
-                              title="O'chirish"
-                            ><Icon name="close" className="text-xs" /></button>
-                          </div>
-                        </div>
-
-                        <div className="pt-2.5 border-t border-white/[0.06] space-y-2 text-xs text-slate-300">
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Oylik to'lov:</span>
-                            <span className="font-bold text-emerald-400 font-mono tabular-nums">{formatMoney(grp.fee)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">O'qituvchi:</span>
-                            <span className="font-medium text-white">{grp.teacher || 'Belgilanmagan'}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Dars vaqti:</span>
-                            <span className="font-medium text-slate-300">{grp.days || '—'}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Xona:</span>
-                            <span className="font-medium text-slate-300">{grp.room || '—'}</span>
-                          </div>
-                        </div>
-
-                        <div className="pt-2.5 border-t border-white/[0.06] flex items-center justify-between text-xs">
-                          <span className="text-slate-400">O'quvchilar soni:</span>
-                          <span className="font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-0.5 rounded-lg font-mono tabular-nums">
-                            {studentCount} ta o'quvchi
-                          </span>
-                        </div>
+                  {filteredGroupsList.length === 0 ? (
+                    <div className="col-span-full p-12 text-center bg-slate-900/60 rounded-3xl border border-white/[0.08] space-y-2">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center mx-auto">
+                        <Icon name="school" className="text-2xl" />
                       </div>
-                    );
-                  })}
+                      <p className="text-sm font-bold text-white">{selectedMonth} oyida guruhlar topilmadi</p>
+                      <p className="text-xs text-slate-400">Boshqa oyni tanlang yoki ushbu oy uchun yangi guruh oching</p>
+                    </div>
+                  ) : (
+                    filteredGroupsList.map(grp => {
+                      const groupPayments = allMonthPayments.filter(p => p.group && p.group.toLowerCase() === grp.name.toLowerCase());
+                      const studentCount = selectedMonth === 'all'
+                        ? students.filter(s => s.group && s.group.toLowerCase() === grp.name.toLowerCase()).length
+                        : (groupPayments.length > 0 ? groupPayments.length : filteredStudentsList.filter(s => s.group && s.group.toLowerCase() === grp.name.toLowerCase()).length);
+                      const groupRev = groupPayments.reduce((acc, p) => acc + getTotalPaid(p), 0);
+
+                      return (
+                        <div key={grp.id} className="p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-white/[0.08] hover:border-purple-500/40 transition-all space-y-3.5 shadow-xl hover:-translate-y-0.5 relative group">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold">
+                                {grp.id}
+                              </span>
+                              <h3 className="font-extrabold text-white text-base mt-2">{grp.name}</h3>
+                              <span className="text-xs text-slate-400 font-medium">{grp.category}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => { setGroupForm({ ...grp }); setIsGroupModalOpen(true); }}
+                                className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 text-xs cursor-pointer border border-white/[0.08]"
+                                title="Tahrirlash"
+                              ><Icon name="edit" className="text-xs" /></button>
+                              <button
+                                onClick={() => handleDeleteGroup(grp.id)}
+                                className="p-1.5 rounded-lg bg-white/[0.05] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 text-xs font-bold cursor-pointer border border-white/[0.08]"
+                                title="O'chirish"
+                              ><Icon name="close" className="text-xs" /></button>
+                            </div>
+                          </div>
+
+                          <div className="pt-2.5 border-t border-white/[0.06] space-y-2 text-xs text-slate-300">
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Oylik to'lov:</span>
+                              <span className="font-bold text-emerald-400 font-mono tabular-nums">{formatMoney(grp.fee)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">O'qituvchi:</span>
+                              <span className="font-medium text-white">{grp.teacher || 'Belgilanmagan'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Dars vaqti:</span>
+                              <span className="font-medium text-slate-300">{grp.days || '—'}</span>
+                            </div>
+                            {selectedMonth !== 'all' && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">Oylik Tushum:</span>
+                                <span className="font-bold text-cyan-300 font-mono tabular-nums">{formatMoney(groupRev)}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-2.5 border-t border-white/[0.06] flex items-center justify-between text-xs">
+                            <span className="text-slate-400">{selectedMonth === 'all' ? "O'quvchilar soni:" : "Shu oydagi o'quvchilar:"}</span>
+                            <span className="font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-0.5 rounded-lg font-mono tabular-nums">
+                              {studentCount} ta o'quvchi
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
@@ -7629,6 +7712,270 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   >
                     <Icon name="upload" className="text-sm mr-1.5" />
                     <span>Yuklash va Hisoblash</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+                    {/* ===== SOF FOYDA HISOBLASH MODALI ===== */}
+          {isSofFoydaModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+              <div className="w-full max-w-2xl rounded-3xl bg-slate-900 border border-emerald-500/40 p-6 sm:p-7 shadow-2xl shadow-emerald-500/20 space-y-6 max-h-[92vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-start justify-between pb-4 border-b border-white/[0.08]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                      <Icon name="trending_up" className="text-2xl" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black text-white">Sof Foyda Hisob-kitobi</h3>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold">
+                          {selectedMonth === 'all' ? 'Barcha oylar' : selectedMonth}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Tushumlar va barcha chiqimlar balansi hamda sof moliyaviy natija tahlili.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsSofFoydaModalOpen(false)}
+                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  ><Icon name="close" className="text-base" /></button>
+                </div>
+
+                {/* Highlight Formula Box */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/60 via-slate-950/80 to-slate-900 border border-emerald-500/40 shadow-inner space-y-3">
+                  <div className="text-[11px] font-extrabold uppercase tracking-widest text-emerald-300 flex items-center gap-1.5">
+                    <Icon name="calculate" className="text-sm" /> Asosiy Formula
+                  </div>
+                  <div className="text-xs sm:text-sm text-slate-300 font-mono leading-relaxed">
+                    <strong>Sof Foyda</strong> = <span className="text-emerald-400 font-bold">Jami Tushum ({formatMoney(totalRevenue)})</span> − <span className="text-rose-400 font-bold">Jami Chiqim ({formatMoney(totalExpenses)})</span>
+                  </div>
+                  <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between">
+                    <span className="text-xs text-slate-400 font-medium">Natija:</span>
+                    <span className={`text-2xl sm:text-3xl font-black font-mono tabular-nums ${
+                      sofFoyda >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}>
+                      {sofFoyda >= 0 ? '+' : '-'}{formatMoney(Math.abs(sofFoyda))}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Breakdown Grid: Kirim vs Chiqim */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Kirimlar */}
+                  <div className="p-4.5 rounded-2xl bg-slate-950/70 border border-emerald-500/30 space-y-3 shadow-lg">
+                    <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+                      <div className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Icon name="payments" className="text-sm" /> Kirimlar (Tushum)
+                      </div>
+                      <span className="text-xs font-mono font-black text-emerald-300">{formatMoney(totalRevenue)}</span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-slate-300 flex items-center gap-1.5">
+                          <Icon name="payments" className="text-xs text-emerald-400" /> Naqd to'lovlar:
+                        </span>
+                        <span className="font-bold text-white font-mono tabular-nums">{formatMoney(totalCash)}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-slate-300 flex items-center gap-1.5">
+                          <Icon name="credit_card" className="text-xs text-blue-400" /> Click / Karta to'lovlar:
+                        </span>
+                        <span className="font-bold text-white font-mono tabular-nums">{formatMoney(totalClick)}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 pt-2 border-t border-white/[0.06]">
+                        <span className="text-slate-400">Jami to'lovlar soni:</span>
+                        <span className="font-bold text-emerald-300 font-mono tabular-nums">{allMonthPayments.length} ta</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chiqimlar */}
+                  <div className="p-4.5 rounded-2xl bg-slate-950/70 border border-rose-500/30 space-y-3 shadow-lg">
+                    <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+                      <div className="text-xs font-black text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Icon name="receipt_long" className="text-sm" /> Chiqimlar (Xarajatlar)
+                      </div>
+                      <span className="text-xs font-mono font-black text-rose-300">{formatMoney(totalExpenses)}</span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-slate-300 flex items-center gap-1.5">
+                          <Icon name="badge" className="text-xs text-amber-400" /> Xodimlar & Ustozlar oyligi:
+                        </span>
+                        <span className="font-bold text-white font-mono tabular-nums">{formatMoney(staffExpensesTotal)}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-slate-300 flex items-center gap-1.5">
+                          <Icon name="store" className="text-xs text-purple-400" /> Markaz operatsion xarajati:
+                        </span>
+                        <span className="font-bold text-white font-mono tabular-nums">{formatMoney(centerExpensesTotal)}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-slate-300 flex items-center gap-1.5">
+                          <Icon name="shield_person" className="text-xs text-orange-400" /> Muassislar (Founder):
+                        </span>
+                        <span className="font-bold text-white font-mono tabular-nums">{formatMoney(founderExpensesTotal)}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 pt-2 border-t border-white/[0.06]">
+                        <span className="text-slate-400">Jami xarajatlar soni:</span>
+                        <span className="font-bold text-rose-300 font-mono tabular-nums">{currentMonthExpenses.length} ta yozuv</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Solvency Status Alert */}
+                <div className={`p-4 rounded-2xl border ${
+                  sofFoyda >= 0
+                    ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-200'
+                    : 'bg-rose-950/30 border-rose-500/30 text-rose-200'
+                } space-y-1.5`}>
+                  <div className="text-xs font-bold flex items-center gap-2">
+                    <Icon name={sofFoyda >= 0 ? "verified" : "warning"} className="text-base" />
+                    <span>{sofFoyda >= 0 ? "Ijobiy Moliyaviy Natija" : "Zarar / Defitsit Holati"}</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-slate-300">
+                    {sofFoyda >= 0
+                      ? `Markaz ushbu davrda ijobiy sof foyda bilan ishladi. Tushum barcha operatsion xarajatlar va oyliklarni to'liq qoplab, ${formatMoney(sofFoyda)} sof daromad qoldirdi.`
+                      : `Ushbu davrda xarajatlar tushumdan ${formatMoney(Math.abs(sofFoyda))} miqdorida oshib ketgan. Xarajatlarni qayta ko'rib chiqish yoki to'lovlar yig'ilishini nazorat qilish tavsiya etiladi.`}
+                  </p>
+                </div>
+
+                {/* Close Button */}
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={() => setIsSofFoydaModalOpen(false)}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                  >
+                    Tushunarli, Yopish
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== KASSOVIY RAZRIV HISOBLASH MODALI ===== */}
+          {isKassoviyRazrivModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+              <div className="w-full max-w-2xl rounded-3xl bg-slate-900 border border-cyan-500/40 p-6 sm:p-7 shadow-2xl shadow-cyan-500/20 space-y-6 max-h-[92vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-start justify-between pb-4 border-b border-white/[0.08]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                      <Icon name="bolt" className="text-2xl" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black text-white">Kassoviy Razriv Tahlili</h3>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold">
+                          {selectedMonth === 'all' ? 'Barcha oylar' : selectedMonth}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Kassadagi sof naqd pul tushumi va xarajatlarni to'lashga naqd pul yetishi yoki yetmasligi (Kassa balansi).
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsKassoviyRazrivModalOpen(false)}
+                    className="w-9 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  ><Icon name="close" className="text-base" /></button>
+                </div>
+
+                {/* Highlight Formula Box */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-cyan-950/60 via-slate-950/80 to-slate-900 border border-cyan-500/40 shadow-inner space-y-3">
+                  <div className="text-[11px] font-extrabold uppercase tracking-widest text-cyan-300 flex items-center gap-1.5">
+                    <Icon name="calculate" className="text-sm" /> Kassoviy Razriv Formulasi
+                  </div>
+                  <div className="text-xs sm:text-sm text-slate-300 font-mono leading-relaxed">
+                    <strong>Kassoviy Razriv</strong> = <span className="text-emerald-400 font-bold">Kassa Naqd Tushumi ({formatMoney(totalCash)})</span> − <span className="text-rose-400 font-bold">Jami Chiqimlar ({formatMoney(totalExpenses)})</span>
+                  </div>
+                  <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between">
+                    <span className="text-xs text-slate-400 font-medium">Naqd Kassa Qoldig'i (Razriv):</span>
+                    <span className={`text-2xl sm:text-3xl font-black font-mono tabular-nums ${
+                      kassoviyRazriv >= 0 ? 'text-cyan-400' : 'text-orange-400'
+                    }`}>
+                      {kassoviyRazriv >= 0 ? '+' : '-'}{formatMoney(Math.abs(kassoviyRazriv))}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Concept Explanation Box */}
+                <div className="p-4.5 rounded-2xl bg-slate-950/80 border border-white/[0.08] space-y-2">
+                  <div className="text-xs font-extrabold text-white flex items-center gap-1.5">
+                    <Icon name="lightbulb" className="text-amber-400 text-sm" /> Kassoviy Razriv nima va nega yuzaga keladi?
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    O'quv markazining to'lovlari ikki xil: <strong>Naqd</strong> va <strong>Click (karta)</strong> orqali tushadi. Biroq markazning xarajatlari (ijara, kundalik xarajatlar, naqd oyliklar) bevosita <strong>naqd pul kassasidan</strong> to'lanishi lozim. Agar tushgan naqd pul jami chiqimlarni qoplashga yetmasa, kassada manfiy defitsit (kassoviy razriv) paydo bo'ladi.
+                  </p>
+                </div>
+
+                {/* Metric Table Comparison */}
+                <div className="p-4.5 rounded-2xl bg-slate-950/70 border border-white/[0.08] space-y-2.5">
+                  <div className="text-xs font-black text-white uppercase tracking-wider mb-2">Hisob-kitob tarkibi:</div>
+                  
+                  <div className="flex justify-between items-center text-xs py-1.5 border-b border-white/[0.06]">
+                    <span className="text-slate-300 flex items-center gap-1.5">
+                      <Icon name="payments" className="text-xs text-emerald-400" /> Kassaga Tushgan Naqd Pul:
+                    </span>
+                    <span className="font-extrabold text-emerald-400 font-mono tabular-nums">+{formatMoney(totalCash)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs py-1.5 border-b border-white/[0.06]">
+                    <span className="text-slate-300 flex items-center gap-1.5">
+                      <Icon name="credit_card" className="text-xs text-blue-400" /> Click / Karta Tushumi (Bank hisobida):
+                    </span>
+                    <span className="font-extrabold text-blue-400 font-mono tabular-nums">{formatMoney(totalClick)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs py-1.5 border-b border-white/[0.06]">
+                    <span className="text-slate-300 flex items-center gap-1.5">
+                      <Icon name="receipt_long" className="text-xs text-rose-400" /> Jami Amalga Oshirilgan Chiqimlar:
+                    </span>
+                    <span className="font-extrabold text-rose-400 font-mono tabular-nums">−{formatMoney(totalExpenses)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs py-2 pt-3 font-bold">
+                    <span className="text-white">Naqd Kassa Holati:</span>
+                    <span className={`text-base font-mono tabular-nums font-black ${
+                      kassoviyRazriv >= 0 ? 'text-cyan-400' : 'text-orange-400'
+                    }`}>
+                      {kassoviyRazriv >= 0 ? 'Barqaror (Yetarli)' : `Defitsit: -${formatMoney(Math.abs(kassoviyRazriv))}`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Status Advice Box */}
+                <div className={`p-4 rounded-2xl border ${
+                  kassoviyRazriv >= 0
+                    ? 'bg-cyan-950/30 border-cyan-500/30 text-cyan-200'
+                    : 'bg-orange-950/30 border-orange-500/30 text-orange-200'
+                } space-y-1.5`}>
+                  <div className="text-xs font-bold flex items-center gap-2">
+                    <Icon name={kassoviyRazriv >= 0 ? "verified" : "warning"} className="text-base" />
+                    <span>{kassoviyRazriv >= 0 ? "Kassada Naqd Pul Yetarli" : "Kassoviy Razriv Xavfi (Naqd Defitsiti)"}</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-slate-300">
+                    {kassoviyRazriv >= 0
+                      ? `Kassaga tushgan naqd pul barcha chiqimlarni to'lashga to'liq yetgan. Kassada ortiqcha naqd mablag' mavjud, defitsit xavfi yo'q.`
+                      : `Kassada ${formatMoney(Math.abs(kassoviyRazriv))} naqd pul yetishmovchiligi mavjud. Garchi markazda Click hisobida ${formatMoney(totalClick)} bo'lsa ham, naqd pul kassasi defitsitda. Tavsiya: bank kartasidagi Click mablag'laridan naqdlashtirib kassa balansini to'ldirish lozim.`}
+                  </p>
+                </div>
+
+                {/* Close Button */}
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={() => setIsKassoviyRazrivModalOpen(false)}
+                    className="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs shadow-lg shadow-cyan-600/30 transition-all cursor-pointer"
+                  >
+                    Tushunarli, Yopish
                   </button>
                 </div>
               </div>
