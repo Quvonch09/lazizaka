@@ -8305,7 +8305,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
             </div>
           )}
 
-          {/* ===== KASSOVIY RAZRIV HISOBLASH MODALI (Rasmdagi Aniq Formula Asosida) ===== */}
+          {/* ===== KASSOVIY RAZRIV HISOBLASH MODALI (Rasmdagi Aniq Formula & Avtomatik Oylar Zanjiri) ===== */}
           {isKassoviyRazrivModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
               <div className="w-full max-w-3xl rounded-3xl bg-slate-900 border border-cyan-500/40 p-6 sm:p-7 shadow-2xl shadow-cyan-500/20 space-y-6 max-h-[92vh] overflow-y-auto">
@@ -8323,7 +8323,7 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                         </span>
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        Rasmdagi oylik va kunlik kumulyativ kassa balansi formulasi asosida to'liq hisob-kitob.
+                        Oldingi oydan avtomatik o'tuvchi kassa balansi va kunlik kumulyativ kassa balansi tahlili.
                       </p>
                     </div>
                   </div>
@@ -8333,39 +8333,66 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
                   ><Icon name="close" className="text-base" /></button>
                 </div>
 
-                {/* 1. Oy boshidagi kassa qoldig'i sozlash qatori */}
-                <div className="p-4 rounded-2xl bg-slate-950/80 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
+                {/* 1. Avtomatik Oldingi Oydan O'tgan Qoldiq Banneri */}
+                <div className="p-4 rounded-2xl bg-slate-950/90 border border-indigo-500/40 space-y-3 shadow-lg">
+                  <div className="flex items-center justify-between">
                     <div className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
-                      <Icon name="account_balance_wallet" className="text-sm" /> Oy boshidagi kassa qoldig'i (Boshlang'ich mablag'):
+                      <Icon name="sync" className="text-sm text-indigo-400 animate-spin-slow" />
+                      <span>Avtomatik Kassa Balansi O'tishi (Avto-hisob)</span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Ushbu oy boshlanishida kassada mavjud bo'lgan pul miqdori
-                    </p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono font-bold border border-indigo-500/30">
+                      {prevMonthNameAuto ? `${prevMonthNameAuto} ➡️ ${selectedMonth}` : "Boshlang'ich oy"}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={customOpeningInput}
-                      onChange={(e) => setCustomOpeningInput(e.target.value)}
-                      placeholder="0"
-                      className="w-36 px-3 py-1.5 rounded-xl bg-slate-900 border border-indigo-500/40 text-white font-mono text-sm focus:outline-none focus:border-indigo-400"
-                    />
-                    <button
-                      onClick={() => {
-                        const num = Number(customOpeningInput || 0);
-                        const next = { ...openingBalances, [selectedMonth]: num };
-                        setOpeningBalances(next);
-                        try {
-                          localStorage.setItem('edufinance_opening_balances', JSON.stringify(next));
-                        } catch (err) {}
-                        showToast(`${selectedMonth} uchun boshlang'ich qoldiq (${formatMoney(num)}) saqlandi!`);
-                      }}
-                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all cursor-pointer shrink-0 shadow-md shadow-indigo-600/30"
-                    >
-                      Saqlash
-                    </button>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono text-xs">
+                    <div className="p-3 rounded-xl bg-slate-900/90 border border-white/[0.07]">
+                      <div className="text-[10px] text-slate-400">
+                        {prevMonthNameAuto ? `${prevMonthNameAuto} oyi yakuniy qoldig'i (Oy boshi):` : "Tizim birinchi oyi boshlang'ich qoldig'i:"}
+                      </div>
+                      <div className={`text-base font-black mt-1 ${
+                        openingCashBalance < 0 ? 'text-rose-400' : 'text-emerald-400'
+                      }`}>
+                        {formatMoney(openingCashBalance)}
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-900/90 border border-white/[0.07]">
+                      <div className="text-[10px] text-slate-400">
+                        {selectedMonth} oyi yakuniy kassa qoldig'i (Keyingi oyga o'tadi):
+                      </div>
+                      <div className={`text-base font-black mt-1 ${
+                        closingCashBalance < 0 ? 'text-rose-400' : 'text-cyan-400'
+                      }`}>
+                        {formatMoney(closingCashBalance)}
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Months Chain Pill Bar */}
+                  {allMonthsCashFlowChain.sortedMonths.length > 1 && (
+                    <div className="pt-2 border-t border-white/[0.06] flex items-center gap-1.5 overflow-x-auto pb-1 text-[10px] font-mono text-slate-400">
+                      <span className="text-slate-500 shrink-0">Oylar zanjiri:</span>
+                      {allMonthsCashFlowChain.sortedMonths.map((m, mIdx) => {
+                        const mData = allMonthsCashFlowChain.chain[m];
+                        const isCurrent = m === selectedMonth;
+                        return (
+                          <div key={m} className="flex items-center gap-1 shrink-0">
+                            <span className={`px-2 py-1 rounded-lg border ${
+                              isCurrent
+                                ? 'bg-indigo-600/30 border-indigo-400 text-indigo-200 font-bold shadow-sm'
+                                : 'bg-slate-900 border-white/[0.08] text-slate-400'
+                            }`}>
+                              {m}: {formatMoney(mData ? mData.closingBalance : 0)}
+                            </span>
+                            {mIdx < allMonthsCashFlowChain.sortedMonths.length - 1 && (
+                              <Icon name="arrow_forward" className="text-xs text-slate-600 shrink-0" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Rasmdagi Asosiy Oylik Formula & Misol bloki */}
@@ -8376,8 +8403,10 @@ ALTER TABLE staff DISABLE ROW LEVEL SECURITY;`;
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
                     <div className="p-3 rounded-xl bg-slate-900/80 border border-white/[0.07]">
-                      <div className="text-[10px] text-slate-400">Oy boshida kassada:</div>
-                      <div className="text-sm font-bold text-indigo-400 mt-1">{formatMoney(openingCashBalance)}</div>
+                      <div className="text-[10px] text-slate-400">Oy boshida kassada (Avtomatik):</div>
+                      <div className={`text-sm font-bold mt-1 ${
+                        openingCashBalance < 0 ? 'text-rose-400' : 'text-indigo-400'
+                      }`}>{formatMoney(openingCashBalance)}</div>
                     </div>
                     <div className="p-3 rounded-xl bg-slate-900/80 border border-white/[0.07]">
                       <div className="text-[10px] text-slate-400">Oy davomida tushum:</div>
